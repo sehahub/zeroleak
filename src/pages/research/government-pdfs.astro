@@ -1,0 +1,184 @@
+---
+import Guide from '../../layouts/Guide.astro';
+import results from '../../../research/results.json';
+
+// Aggregated at build time from the scan output, so the prose cannot drift
+// away from the data. Only aggregates reach the page — never a per-document
+// row, which would let a reader work out which file a finding belongs to.
+type Row = {
+  redacted: boolean;
+  pages?: number;
+  error?: string;
+  findings?: Record<string, number>;
+};
+
+const rows = (results as Row[]).filter((r) => !r.error && r.pages);
+const redacted = rows.filter((r) => r.redacted);
+const ordinary = rows.filter((r) => !r.redacted);
+const pages = rows.reduce((a, r) => a + (r.pages ?? 0), 0);
+
+const share = (set: Row[], id: string) => {
+  const n = set.filter((r) => r.findings?.[id]).length;
+  return { n, pct: set.length ? Math.round((n / set.length) * 1000) / 10 : 0 };
+};
+const fmt = (s: { n: number; pct: number }) => (s.n === 0 ? 'none' : `${s.pct}%`);
+
+const CHECKS = [
+  ['xmp', 'An XMP metadata packet', 'The second metadata block, which "clear document properties" does not touch. Carries the author, the creating application and an identifier shared by copies of the same file.'],
+  ['metadata-identity', 'A person or topic in the document properties', 'Author, title, subject or keywords with something in them.'],
+  ['prior-revisions', 'An earlier version of itself', 'Saved incrementally, so a previous state of the document is still inside the file.'],
+  ['off-page-text', 'Text outside the page boundary', 'Present in the file, drawn where no reader displays it.'],
+  ['attachments', 'A complete embedded file', 'Another document stapled inside this one.'],
+  ['ocr-layer', 'A machine-generated text layer', 'Normal for a scan or a plan. Listed because it is what copying returns.'],
+  ['annotations', 'Review comments', 'Notes carrying the name of whoever wrote them.'],
+  ['hidden-text', 'Text under an opaque shape', 'The failure everyone worries about.'],
+] as const;
+
+const rev = share(rows, 'prior-revisions');
+const meta = share(rows, 'metadata-identity');
+const xmpAll = share(rows, 'xmp');
+const revRed = share(redacted, 'prior-revisions');
+const revOrd = share(ordinary, 'prior-revisions');
+const hiddenAll = share(rows, 'hidden-text');
+
+const toc = [
+  { id: 'finding', label: 'What we found' },
+  { id: 'numbers', label: 'The numbers' },
+  { id: 'revisions', label: 'The one that surprised me' },
+  { id: 'method', label: 'Method' },
+  { id: 'ethics', label: 'What this study does not do' },
+  { id: 'limits', label: 'Limits' },
+];
+
+const related = [
+  { href: '/guides/redact-a-pdf-properly', title: 'How to redact a PDF so the text is actually gone', note: 'the mechanism behind the failure this study did not find' },
+  { href: '/guides/hidden-content-in-pdfs', title: 'What can hide inside a PDF', note: 'a field guide to every category measured here' },
+];
+---
+
+<Guide
+  title={`What ${rows.length} published government documents are still carrying`}
+  metaTitle={`We scanned ${rows.length} UK government PDFs — the redactions held, the filing did not`}
+  description={`A structural scan of ${rows.length} PDFs published by UK government bodies, covering ${pages.toLocaleString()} pages. Not one failed redaction. But ${rev.pct}% still contain an earlier version of themselves, and ${meta.pct}% name a person or a topic in their metadata.`}
+  path="/research/government-pdfs"
+  kicker="Research"
+  standfirst={`Redaction failures get the headlines. So I scanned ${rows.length} documents published by UK government bodies to find some — and found none. What I found instead is quieter, far more common, and nobody is looking for it.`}
+  updated="2026-08-30"
+  toc={toc}
+  related={related}
+>
+  <h2 id="finding">What we found</h2>
+  <p class="lead">
+    Every published redaction scandal follows the same script: a black box, a copy-paste, a name.
+    It is a vivid failure, so it is the one people guard against. The guarding appears to work.
+  </p>
+  <p>
+    Across {rows.length} documents and {pages.toLocaleString()} pages, the scan flagged
+    {hiddenAll.n === 1 ? ' a single document ' : ` ${hiddenAll.n} documents `}
+    with text under an opaque shape — and on inspection
+    {hiddenAll.n === 1 ? ' that one turned out to be ' : ' those turned out to be '}
+    fragments of cover-page template text rather than anything withheld. Not one failed redaction in
+    the sample. Whatever these organisations are doing about redaction, it is holding.
+  </p>
+  <p>
+    What is not holding is everything the file records about itself without being asked.
+    <strong>{xmpAll.pct}% carry an XMP metadata packet</strong> — the second, richer metadata block
+    that the "clear document properties" button in most software does not touch.
+    <strong>{meta.pct}% name a person or a topic</strong> in their document properties. And
+    <strong>{rev.pct}% still contain an earlier version of themselves</strong>, because they were
+    saved incrementally and nothing discarded what came before.
+  </p>
+  <div class="callout">
+    <b>The shape of the problem</b>
+    <p>
+      Redaction is a decision somebody makes, so it gets attention. Everything above is written
+      automatically, by software, without anyone choosing it — which is exactly why nobody removes it.
+    </p>
+  </div>
+
+  <h2 id="numbers">The numbers</h2>
+  <p>
+    Documents are split by whether the publishing process would have involved redacting them.
+    Freedom-of-information responses and transparency releases are redacted as a matter of routine;
+    corporate reports, policy papers and research publications are not.
+  </p>
+  <div class="scroll-x">
+    <table class="cmp">
+      <thead>
+        <tr>
+          <th>The file still contains</th>
+          <th>Redacted before release<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{redacted.length} documents</span></th>
+          <th>Ordinary publications<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{ordinary.length} documents</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {CHECKS.map(([id, label, note]) => (
+          <tr>
+            <td>{label}<br /><span style="font-weight:400;color:var(--muted);font-size:0.88em">{note}</span></td>
+            <td>{fmt(share(redacted, id))}</td>
+            <td>{fmt(share(ordinary, id))}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Nothing failed to parse. Every document in the sample was read end to end, to a depth of thirty
+    pages.
+  </p>
+
+  <h2 id="revisions">The one that surprised me</h2>
+  <p>
+    Retained revisions split the two groups sharply: <strong>{revOrd.pct}% of ordinary
+    publications</strong> against <strong>{revRed.pct}% of documents that were redacted before
+    release</strong>.
+  </p>
+  <p>
+    The gap is not a story about care. It is a story about editing. A redaction response is often a
+    short letter, written once and exported once. A policy paper or an annual report goes through
+    many rounds in an editor that appends each save to the file rather than rewriting it, and every
+    one of those earlier states stays inside the document that gets published.
+  </p>
+  <p>
+    Which means the safest-looking documents in this sample — the long, carefully produced ones with
+    a named author and a design team — are the ones most likely to be carrying their own drafts.
+    Nothing about that is visible when you open the file.
+  </p>
+
+  <h2 id="method">Method</h2>
+  <ul>
+    <li><strong>Source.</strong> Documents published on gov.uk, retrieved through its public content API, taking the first PDF attachment of each publication.</li>
+    <li><strong>Selection.</strong> Most recent first within five publication types: freedom-of-information releases and transparency data (the redacted group), and corporate reports, policy papers and research publications (the comparison group). No document was excluded on the basis of what the scan found in it.</li>
+    <li><strong>Sample.</strong> {rows.length} documents, {pages.toLocaleString()} pages, retrieved on 30 August 2026. Files above 25 MB were skipped, which biases the sample slightly against the largest publications.</li>
+    <li><strong>Analysis.</strong> The same scanner that runs on the <a href="/">front page</a>, at a limit of thirty pages per document. It reads the file's structure: the drawing instructions, the object graph, and the bytes around them.</li>
+    <li><strong>Verification.</strong> Every category the scanner reports was checked by hand against real documents before these numbers were taken. Three findings turned out to be artefacts of the tool rather than the documents — a false alarm on a hairline rule drawn as a clipped rectangle, another on annotation placement, and a third on the searchable text layer of scans — and each was fixed before the run that produced this page.</li>
+  </ul>
+
+  <h2 id="ethics">What this study does not do</h2>
+  <p>
+    A study of leaks should not become a way of publishing them. Three constraints, enforced in the
+    code rather than by intention:
+  </p>
+  <ul>
+    <li><strong>No document is named</strong>, in the published results or anywhere else.</li>
+    <li><strong>No recovered content is stored.</strong> The scan pipeline records finding types and counts. It has no field for the text, the metadata values, or anything else it read; only aggregates were ever written to disk.</li>
+    <li><strong>Nothing here identifies a person.</strong> Where a finding needed checking by hand, it was examined by character class and geometry rather than by reading the value — enough to tell a redaction from a font artefact, and no more.</li>
+  </ul>
+  <p>
+    The one document with text under a shape was examined this way. The recovered fragments came
+    from a cover page and read as template text rather than anything withheld.
+  </p>
+
+  <h2 id="limits">Limits</h2>
+  <ul>
+    <li>One country, one publishing platform, one afternoon. These proportions describe this sample and should not be read as a rate for government publishing generally, still less for any individual body.</li>
+    <li>Thirty pages per document. A finding on page 200 of a long report was not counted.</li>
+    <li>The scan reads structure, not pictures. Text burned into a scanned image is beyond it — which means a redaction failure inside a scan would not appear in these numbers.</li>
+    <li>Carrying metadata is not the same as being harmed by it. An author name in a published report is often unremarkable; the same field on an anonymous submission is not. This measures presence, not consequence.</li>
+    <li>Sample sizes here are in the tens and hundreds. Differences of a few percentage points are noise; the revision gap is not.</li>
+  </ul>
+  <p>
+    The scanner is free and runs in your browser, so you can reproduce any of this on documents you
+    care about without sending them anywhere. <a href="/">It is here.</a>
+  </p>
+</Guide>

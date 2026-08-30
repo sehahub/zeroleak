@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 const key = readFileSync('.indexnow-key', 'utf8').trim();
 const host = 'zeroleak.sehahub.info';
 const urlList = [
-  '/', '/guides', '/guides/redact-a-pdf-properly',
-  '/guides/remove-pdf-metadata', '/guides/hidden-content-in-pdfs',
+  '/', '/guides/', '/research/government-pdfs/', '/guides/redact-a-pdf-properly/',
+  '/guides/remove-pdf-metadata/', '/guides/hidden-content-in-pdfs/',
 ].map((p) => `https://${host}${p}`);
 
 const res = await fetch('https://api.indexnow.org/indexnow', {
