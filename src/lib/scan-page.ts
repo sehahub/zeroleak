@@ -1,7 +1,7 @@
 // Walks a page's operator list to find content that is present in the file
 // but not readable on screen: text painted over, text drawn invisibly,
 // and text placed outside the visible page area.
-import { IDENTITY, mul, transformBox, unionCoverage } from './geometry.ts';
+import { area, IDENTITY, mul, transformBox, unionCoverage } from './geometry.ts';
 import type { Box, Matrix } from './geometry.ts';
 
 export type TextRun = { box: Box; text: string; invisible: boolean; order: number };
@@ -14,13 +14,19 @@ export type PageScan = {
   runs: number;
 };
 
+/** Only Normal compositing actually hides what is beneath. Highlighter pens
+ *  use Multiply, which leaves the text readable. */
+function isOpaqueBlend(bm: string): boolean {
+  return bm === 'Normal' || bm === 'Compatible' || bm === '';
+}
+
 // Paint operators that lay down an opaque fill.
 const FILL_OPS = new Set([22, 23, 24, 25, 26, 27]);
 // Coordinates consumed by each path-construction opcode in pdf.js's packed array.
 const DRAW_ARITY: Record<number, number> = { 0: 2, 1: 2, 2: 6, 3: 4, 4: 0 };
 
 type GState = {
-  ctm: Matrix; fill: string; alpha: number;
+  ctm: Matrix; fill: string; alpha: number; blend: string;
   fontSize: number; leading: number; charSpacing: number; wordSpacing: number; hScale: number;
   render: number;
 };
@@ -103,8 +109,9 @@ export function scanOperatorList(
 ): PageScan {
   const runs: TextRun[] = [];
   const covers: Cover[] = [];
+  const pageArea = Math.max(0, view[2] - view[0]) * Math.max(0, view[3] - view[1]);
   let s: GState = {
-    ctm: IDENTITY, fill: '#000000', alpha: 1,
+    ctm: IDENTITY, fill: '#000000', alpha: 1, blend: 'Normal',
     fontSize: 0, leading: 0, charSpacing: 0, wordSpacing: 0, hScale: 1, render: 0,
   };
   const stack: GState[] = [];
@@ -146,6 +153,7 @@ export function scanOperatorList(
         const pairs = (args[0] as [string, unknown][]) ?? [];
         for (const pair of pairs) {
           if (pair[0] === 'ca' && typeof pair[1] === 'number') s.alpha = pair[1];
+          if (pair[0] === 'BM') s.blend = String(pair[1] ?? 'Normal');
         }
         break;
       }
@@ -171,7 +179,7 @@ export function scanOperatorList(
         emitText((args[2] as unknown[]) ?? [], i); break;
       case OPS.constructPath: {
         const paint = Number(args[0]);
-        if (!FILL_OPS.has(paint) || s.alpha < 0.85) break;
+        if (!FILL_OPS.has(paint) || s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
         const rects = extractRectsFromArg(args[1]);
         if (!rects) break;
         for (const r of rects) {
@@ -180,11 +188,15 @@ export function scanOperatorList(
         break;
       }
       case OPS.paintImageXObject:
-      case OPS.paintInlineImageXObject:
-        if (s.alpha >= 0.85) {
-          covers.push({ box: transformBox(s.ctm, { x0: 0, y0: 0, x1: 1, y1: 1 }), color: 'image', order: i, kind: 'image' });
-        }
+      case OPS.paintInlineImageXObject: {
+        if (s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
+        const box = transformBox(s.ctm, { x0: 0, y0: 0, x1: 1, y1: 1 });
+        // A picture spanning most of the page is a scan or a background, not a
+        // redaction patch. Treating it as a cover would flag every scanned page.
+        if (pageArea > 0 && area(box) > 0.6 * pageArea) break;
+        covers.push({ box, color: 'image', order: i, kind: 'image' });
         break;
+      }
       default: break;
     }
   }

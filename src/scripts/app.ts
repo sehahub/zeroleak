@@ -82,7 +82,7 @@ function reportToText(r: Report): string {
     if (f.truncated) lines.push(`    (+${f.truncated} more)`);
     lines.push('');
   }
-  lines.push('Scanned locally in the browser. The file was never uploaded. https://zeroleak.workers.dev');
+  lines.push('Scanned locally in the browser. The file was never uploaded. https://zeroleak.sehahub-info.workers.dev');
   return lines.join('\n');
 }
 

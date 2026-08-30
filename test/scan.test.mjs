@@ -29,5 +29,16 @@ ok(!leaky.covered.some(c => c.text.includes('SEVERANCE SUMMARY')), 'does not fla
 const clean = (await scan('test/fixtures/clean.pdf'))[0];
 ok(clean.covered.length === 0 && clean.invisible.length === 0 && clean.offPage.length === 0, 'clean control document is silent');
 
+// Things that look like redactions but are not, plus one that is.
+const tricky = (await scan('test/fixtures/tricky.pdf'))[0];
+const hidden = tricky.covered.map(c => c.text).join(' | ');
+ok(/8842-1109-3320/.test(hidden), 'still catches a genuine black-box redaction');
+ok(!/Region/.test(hidden), 'table cell shading drawn before the text is not a cover');
+ok(!/Highlighted/.test(hidden), 'a Multiply-blended highlighter pen is not a cover');
+ok(!/Draft figures/.test(hidden), 'a 35%-alpha wash is not a cover');
+ok(!/Circled/.test(hidden), 'a filled ellipse over text is not a cover');
+ok(!/full-page overlay/.test(hidden), 'a full-page background image is not a cover');
+ok(tricky.covered.length === 1, 'exactly one finding in the tricky document, got ' + tricky.covered.length);
+
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);

@@ -7,5 +7,12 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "zeroleak",
+      "database_id": "b9b4d0c1-2bf2-4da1-bdc2-0ee4ee71a147"
+    }
+  ]
 }
