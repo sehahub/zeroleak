@@ -41,6 +41,7 @@ ok(!/full-page overlay/.test(hidden), 'a full-page background image is not a cov
 ok(!/Section heading/.test(hidden), 'a page-sized rect clipped to a hairline is not a cover');
 ok(!/MODEL/.test(hidden), 'a label drawn behind and again on top of its box is not hidden');
 ok(!/must stay visible/.test(hidden), 'an annotation is placed by its Rect, not at the page origin');
+ok(!hidden.includes('!!!!'), 'punctuation with no letters or digits is not reported as hidden text');
 ok(tricky.covered.length === 1, 'exactly one finding in the tricky document, got ' + tricky.covered.length);
 
 console.log(fail ? `\n${fail} FAILING` : '\nall green');

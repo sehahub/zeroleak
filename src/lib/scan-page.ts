@@ -103,6 +103,11 @@ function extractRects(coords: ArrayLike<number>): Box[] | null {
 
 const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
 
+/** Runs of punctuation carry no information and are usually an artefact of a
+ *  font whose character mapping could not be resolved. Reporting them as
+ *  hidden text is a false alarm. */
+const hasSubstance = (t: string) => /[\p{L}\p{N}]/u.test(t);
+
 /** True when the same text is painted somewhere on this page with nothing
  *  opaque on top of it. */
 function drawnInTheOpen(run: TextRun, runs: TextRun[], covers: Cover[]): boolean {
@@ -268,6 +273,7 @@ export function scanOperatorList(
   const offPage: string[] = [];
 
   for (const r of runs) {
+    if (!hasSubstance(r.text)) continue;
     if (r.invisible) { invisible.push(r.text); continue; }
     const outside = r.box.x1 < vx0 || r.box.x0 > vx1 || r.box.y1 < vy0 || r.box.y0 > vy1;
     if (outside) { offPage.push(r.text); continue; }

@@ -98,5 +98,10 @@ const widget = ctx.obj({
 });
 page.node.set(PDFName.of('Annots'), ctx.obj([ctx.register(widget)]));
 
+// (J) A run of punctuation under a black bar. This is what an unresolvable
+//     font mapping looks like after extraction, not a redacted secret.
+page.drawText('!!!!', { x: 300, y: 350, size: 11, font });
+page.drawRectangle({ x: 296, y: 344, width: 40, height: 17, color: rgb(0, 0, 0) });
+
 writeFileSync('test/fixtures/tricky.pdf', await doc.save({ useObjectStreams: false }));
 console.log('wrote test/fixtures/tricky.pdf');
