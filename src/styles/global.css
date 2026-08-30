@@ -383,3 +383,11 @@ table.cmp td:first-child { color: var(--ink); font-weight: 550; }
 .more a { color: var(--ink); text-decoration: none; font-weight: 550; }
 .more a:hover { text-decoration: underline; }
 .more span { color: var(--muted); font-weight: 400; }
+
+.signup textarea {
+  flex: 1 1 100%; font: inherit; font-size: 0.94rem; line-height: 1.5;
+  padding: 0.6rem 0.75rem; border-radius: 8px; resize: vertical;
+  border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink);
+}
+.signup textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+.signup textarea::placeholder { color: var(--muted); }

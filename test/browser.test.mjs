@@ -15,11 +15,19 @@ const MIME = {
 };
 
 const ROOT = resolve('dist');
+/** Everything the page posted to its own origin, as the server saw it. */
+const received = [];
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
-    // Stand in for the Worker so the page behaves as it does in production.
-    if (url.pathname.startsWith('/api/')) { res.writeHead(204); res.end(); return; }
+    // Stand in for the Worker so the page behaves as it does in production,
+    // and keep what it was sent so the tests can check it.
+    if (url.pathname.startsWith('/api/')) {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      received.push({ path: url.pathname, body: Buffer.concat(chunks).toString('utf8') });
+      res.writeHead(204); res.end(); return;
+    }
     let p = join(ROOT, decodeURIComponent(url.pathname));
     if ((await stat(p).catch(() => null))?.isDirectory()) p = join(p, 'index.html');
     if (!existsSync(p)) { res.writeHead(404); res.end('nope'); return; }
@@ -73,6 +81,28 @@ await page.reload({ waitUntil: 'networkidle0' });
 await (await page.$('#file')).uploadFile(resolve('test/fixtures/leaky.pdf'));
 await page.waitForSelector('.finding', { timeout: 45000 });
 ok(offOrigin.length === 0, `no off-origin requests during a scan${offOrigin.length ? ': ' + offOrigin.join(', ') : ''}`);
+
+// ---- what leaves the browser during a scan -----------------------------
+// The privacy claim is that a counter request carries a bare event name and
+// nothing about the document. That is worth enforcing rather than asserting.
+const p3 = await browser.newPage();
+received.length = 0;
+await p3.goto(base, { waitUntil: 'networkidle0' });
+await (await p3.$('#file')).uploadFile(resolve('test/fixtures/leaky.pdf'));
+await p3.waitForSelector('.finding', { timeout: 45000 });
+await new Promise((r) => setTimeout(r, 600));
+
+const events = received.filter((b) => b.path === '/api/event');
+ok(events.length === 1 && events[0].body === JSON.stringify({ name: 'scan' }),
+  `the scan tally carries only its name (${events.length} sent, body ${JSON.stringify(events[0]?.body ?? '')})`);
+
+const all = received.map((b) => b.body).join(' ');
+const forbidden = ['leaky', '891-23-4567', 'Jane Doe', 'settlement', 'severance', '.pdf'];
+const leaked = forbidden.filter((f) => all.includes(f));
+ok(leaked.length === 0, `nothing the page posted mentions the document${leaked.length ? ': ' + leaked.join(', ') : ''}`);
+ok(received.every((b) => ['/api/hit', '/api/event'].includes(b.path)),
+  `only the two counter endpoints are called (${[...new Set(received.map((b) => b.path))].join(', ')})`);
+await p3.close();
 
 // ---- the cleaner, end to end -------------------------------------------
 const DL = resolve('.tmp-downloads');

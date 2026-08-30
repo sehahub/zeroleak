@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit --ignoreConfig --skipLibCheck --target es2022 --lib es2022,dom --module esnext --moduleResolution bundler --strict --allowImportingTsExtensions --types @cloudflare/workers-types src/worker.ts src/lib/analyze.ts src/lib/scan-page.ts src/lib/geometry.ts",
     "fixtures": "node test/make-fixture.mjs && node test/make-tricky.mjs",
     "shots": "node test/shot.mjs shots",
-    "deploy": "astro build && wrangler deploy"
+    "deploy": "astro build && wrangler deploy",
+    "metrics": "node research/metrics.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

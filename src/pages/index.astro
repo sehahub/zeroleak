@@ -47,7 +47,7 @@ const checks = [
 const faqs = [
   {
     q: 'Is my file uploaded anywhere?',
-    a: 'No. Scanning and cleaning both run inside your browser tab. Your PDF is never sent to a server, because there is no server-side code to send it to. You can verify this: load the page, disconnect from the network, and use it. It still works. The site keeps an aggregate count of page views (page, day, referring site — no cookies, no IP, no third party) and records nothing whatsoever about a document.',
+    a: 'No. Scanning and cleaning both run inside your browser tab. Your PDF is never sent to a server, because there is no server-side code to send it to. You can verify this: load the page, disconnect from the network, and use it. It still works. The site keeps three aggregate tallies — a page was viewed, a scan finished, a file was cleaned — with no cookie, no IP address and no third-party analytics. The request that increments a tally carries a single word and no other field, so no property of your document reaches the server: not the file, not its name, not its size, not what was found in it.',
   },
   {
     q: 'Why is drawing a black box over text not a redaction?',
@@ -221,10 +221,22 @@ const faqSchema = {
         server-based tool can do.
       </p>
       <p>
-        For completeness, here is the one thing this site does record: when a page loads it adds 1 to
-        a counter of <em>page, day, referring site</em>. No cookie, no IP address, no visitor
-        identifier, no third-party analytics service. Nothing is recorded when you scan or clean a
-        file — not the document, not its name, not what was found in it. That is the whole of it.
+        Here is everything this site records, in full. Three tallies go up: <em>a page was
+        viewed</em> (with the day and the site you came from), <em>a scan finished</em>, and <em>a
+        file was cleaned</em>. No cookie, no IP address, no visitor identifier, no third-party
+        analytics.
+      </p>
+      <p>
+        Nothing about your document is in that list, and it cannot be: the scan happens in your
+        browser, and the request that increments the counter carries one word — <code>scan</code> —
+        and no other field. Not the file, not its name, not its size, not its page count, not what
+        was found in it. The server is checked against a fixed list of three names and rejects
+        anything else, so there is nowhere for a document detail to go even by accident.
+      </p>
+      <p>
+        I count those three because I have to decide what to build next, and "did anyone actually
+        use it" is a question I cannot answer from page views alone. It seemed better to say so
+        plainly than to claim a purity I was not keeping.
       </p>
     </div>
   </section>
@@ -241,6 +253,12 @@ const faqSchema = {
           when it is ready, and I would rather hear what you actually need before I finish it.
         </p>
         <form id="signup" novalidate>
+          <textarea
+            name="note"
+            rows="3"
+            aria-label="What would you want it to do?"
+            placeholder="Optional, and the part I actually read: what would it need to check, and where would it have to run? A sentence is plenty."
+          ></textarea>
           <input type="email" name="email" placeholder="you@firm.com" required aria-label="Email address" />
           <button class="btn" type="submit">Keep me posted</button>
         </form>

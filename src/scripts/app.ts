@@ -12,6 +12,17 @@ function el(tag: string, className?: string, text?: string): HTMLElement {
   return n;
 }
 
+/** Adds 1 to a named tally. The request carries the name and nothing else —
+ *  no file name, no size, no page count, no finding. */
+export function count(name: 'scan' | 'scan-failed' | 'clean') {
+  try {
+    navigator.sendBeacon?.(
+      '/api/event',
+      new Blob([JSON.stringify({ name })], { type: 'application/json' }),
+    );
+  } catch { /* a missed count is not worth an error */ }
+}
+
 let pdfjsPromise: Promise<any> | null = null;
 function loadPdfjs() {
   if (!pdfjsPromise) {
@@ -187,11 +198,13 @@ async function scanBytes(bytes: Uint8Array, fileName: string) {
 
     bar.style.width = '100%';
     status.hidden = true;
+    count('scan');
     renderReport(r, report, {
       bytes, pdfjs, pages: pagesWithHiddenText(r), cleaner: renderCleaner,
     });
     report.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
+    count('scan-failed');
     status.hidden = false;
     $('dz').hidden = false;
     statusText.textContent =
@@ -261,6 +274,7 @@ function wireSignup() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = form.querySelector('input[name=email]') as HTMLInputElement;
+    const notes = form.querySelector('textarea[name=note]') as HTMLTextAreaElement | null;
     const email = input.value.trim();
     if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email)) {
       note.textContent = 'That address does not look right.';
@@ -271,7 +285,11 @@ function wireSignup() {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          note: notes?.value.trim() ?? '',
+          source: location.pathname,
+        }),
       });
       if (!res.ok) throw new Error(String(res.status));
       form.hidden = true;

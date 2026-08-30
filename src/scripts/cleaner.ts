@@ -144,6 +144,8 @@ export function renderCleaner(
       }
 
       const { bytes: out, actions: done } = await cleanPdf(bytes, chosen);
+      const { count } = await import('./app.ts');
+      count('clean');
       const name = report.fileName.replace(/\.pdf$/i, '') + '-cleaned.pdf';
       download(out, name);
 
