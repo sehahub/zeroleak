@@ -1,6 +1,7 @@
 // Produces the full leak report for one PDF. Runs entirely in the caller's
 // process — nothing here touches the network.
 import { scanOperatorList } from './scan-page.ts';
+import { parseXmp } from './xmp.ts';
 
 export type Severity = 'critical' | 'warning' | 'info';
 
@@ -177,19 +178,22 @@ export async function analyzePdf(
       }));
     }
 
-    const xmp = meta?.metadata?.getAll?.();
-    if (xmp) {
-      const interesting = entriesOf<string>(xmp)
-        .filter(([k, v]) => typeof v === 'string' && v.trim() && !/^(?:dc:format|xmp:metadatadate)$/i.test(k))
-        .map(([k, v]) => ({ label: k, value: clip(String(v), 200) }));
-      if (interesting.length) {
+    // pdf.js exposes only the raw packet, so the fields are pulled out here.
+    const rawXmp: string | undefined = meta?.metadata?.getRaw?.();
+    if (rawXmp) {
+      const fields = parseXmp(rawXmp);
+      if (fields.length) {
+        const identifying = fields.some((f) => f.identifying);
         findings.push(makeFinding({
-          id: 'xmp', severity: 'warning',
-          title: 'An XMP metadata packet is embedded',
+          id: 'xmp',
+          severity: identifying ? 'warning' : 'info',
+          title: identifying
+            ? 'The XMP metadata packet names people or links this file to others'
+            : 'An XMP metadata packet is embedded',
           what: 'XMP is a second, richer metadata block that most "remove properties" features leave untouched.',
-          why: 'It commonly carries the original document identifier, editing history, and the account name of whoever last handled the file — linking together copies you believed were unrelated.',
+          why: 'It commonly carries the original document identifier, the editing history, and the account name of whoever last handled the file — linking together copies you believed were unrelated. Clearing the document properties panel does not touch it.',
           fix: 'Remove the XMP packet, not just the basic document properties.',
-          evidence: interesting,
+          evidence: fields.map((f) => ({ label: f.key, value: f.value })),
         }));
       }
     }
