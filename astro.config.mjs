@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://zeroleak.sehahub-info.workers.dev',
+  site: 'https://zeroleak.sehahub.info',
   integrations: [sitemap()],
   build: { inlineStylesheets: 'auto' },
   vite: {

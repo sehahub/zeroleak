@@ -7,7 +7,7 @@ interface Props {
   path?: string;
 }
 const { title, description, path = '/' } = Astro.props;
-const canonical = new URL(path, Astro.site ?? 'https://zeroleak.sehahub-info.workers.dev').href;
+const canonical = new URL(path, Astro.site ?? 'https://zeroleak.sehahub.info').href;
 ---
 
 <!doctype html>

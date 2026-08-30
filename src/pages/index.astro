@@ -47,7 +47,7 @@ const checks = [
 const faqs = [
   {
     q: 'Is my file uploaded anywhere?',
-    a: 'No. The scan runs inside your browser tab using WebAssembly and JavaScript. Your PDF is never sent to a server, because there is no server-side scanning code to send it to. You can verify this: load the page, disconnect from the network, and scan a file. It still works.',
+    a: 'No. The scan runs inside your browser tab using WebAssembly and JavaScript. Your PDF is never sent to a server, because there is no server-side scanning code to send it to. You can verify this: load the page, disconnect from the network, and scan a file. It still works. The site keeps an aggregate count of page views (page, day, referring site — no cookies, no IP, no third party) and records nothing whatsoever about a scan.',
   },
   {
     q: 'Why is drawing a black box over text not a redaction?',
@@ -180,6 +180,12 @@ const faqSchema = {
         You do not have to take that on trust. <strong>Open this page, disconnect your machine from
         the network, then scan a file.</strong> The report still appears. That is not something a
         server-based tool can do.
+      </p>
+      <p>
+        For completeness, here is the one thing this site does record: when a page loads it adds 1 to
+        a counter of <em>page, day, referring site</em>. No cookie, no IP address, no visitor
+        identifier, no third-party analytics service. Nothing is recorded when you scan a file — not
+        the document, not its name, not what was found in it. That is the whole of it.
       </p>
     </div>
   </section>

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://zeroleak.sehahub-info.workers.dev/sitemap-index.xml
+Sitemap: https://zeroleak.sehahub.info/sitemap-index.xml

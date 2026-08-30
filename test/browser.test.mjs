@@ -16,6 +16,8 @@ const ROOT = resolve('dist');
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
+    // Stand in for the Worker so the page behaves as it does in production.
+    if (url.pathname.startsWith('/api/')) { res.writeHead(204); res.end(); return; }
     let p = join(ROOT, decodeURIComponent(url.pathname));
     if ((await stat(p).catch(() => null))?.isDirectory()) p = join(p, 'index.html');
     if (!existsSync(p)) { res.writeHead(404); res.end('nope'); return; }

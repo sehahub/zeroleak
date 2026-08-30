@@ -5,7 +5,9 @@ import { existsSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 const MIME = { '.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.map':'application/json' };
 const ROOT = resolve('dist');
-const server = createServer(async (req,res)=>{ let p=join(ROOT, decodeURIComponent(new URL(req.url,'http://x').pathname));
+const server = createServer(async (req,res)=>{ const u=new URL(req.url,'http://x');
+  if (u.pathname.startsWith('/api/')) { res.writeHead(204); res.end(); return; }
+  let p=join(ROOT, decodeURIComponent(u.pathname));
   if((await stat(p).catch(()=>null))?.isDirectory()) p=join(p,'index.html');
   if(!existsSync(p)){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'content-type':MIME[extname(p)]??'application/octet-stream'}); res.end(await readFile(p)); });

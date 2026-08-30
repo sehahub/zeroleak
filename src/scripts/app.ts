@@ -82,7 +82,7 @@ function reportToText(r: Report): string {
     if (f.truncated) lines.push(`    (+${f.truncated} more)`);
     lines.push('');
   }
-  lines.push('Scanned locally in the browser. The file was never uploaded. https://zeroleak.sehahub-info.workers.dev');
+  lines.push('Scanned locally in the browser. The file was never uploaded. https://zeroleak.sehahub.info');
   return lines.join('\n');
 }
 
@@ -262,7 +262,24 @@ function wireSignup() {
   });
 }
 
+/** Counts the page view. Sends the path and the referring site's host — never
+ *  a full referrer URL, never anything about a scanned document. */
+function countVisit() {
+  let ref = '';
+  try {
+    if (document.referrer) {
+      const h = new URL(document.referrer).host;
+      if (h && h !== location.host) ref = h;
+    }
+  } catch { /* malformed referrer */ }
+  navigator.sendBeacon?.(
+    '/api/hit',
+    new Blob([JSON.stringify({ path: location.pathname, ref })], { type: 'application/json' }),
+  );
+}
+
 export function mount() {
   wireDropzone();
   wireSignup();
+  countVisit();
 }

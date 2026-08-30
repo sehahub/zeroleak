@@ -3,6 +3,9 @@
   "name": "zeroleak",
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-30",
+  "routes": [
+    { "pattern": "zeroleak.sehahub.info", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
