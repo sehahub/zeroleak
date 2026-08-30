@@ -47,15 +47,19 @@ const checks = [
 const faqs = [
   {
     q: 'Is my file uploaded anywhere?',
-    a: 'No. The scan runs inside your browser tab using WebAssembly and JavaScript. Your PDF is never sent to a server, because there is no server-side scanning code to send it to. You can verify this: load the page, disconnect from the network, and scan a file. It still works. The site keeps an aggregate count of page views (page, day, referring site — no cookies, no IP, no third party) and records nothing whatsoever about a scan.',
+    a: 'No. Scanning and cleaning both run inside your browser tab. Your PDF is never sent to a server, because there is no server-side code to send it to. You can verify this: load the page, disconnect from the network, and use it. It still works. The site keeps an aggregate count of page views (page, day, referring site — no cookies, no IP, no third party) and records nothing whatsoever about a document.',
   },
   {
     q: 'Why is drawing a black box over text not a redaction?',
     a: 'A PDF stores the text and the box as two independent objects. The box is painted after the text, so on screen the text disappears. The text object is untouched. Selecting the area and copying it, or running any text-extraction tool, returns the original words in full.',
   },
   {
-    q: 'What should I do about the findings?',
-    a: 'For hidden text, the underlying text objects must be deleted, not covered. For metadata and attachments, strip them before sending. For a file with earlier revisions inside, re-save it as a single revision. A one-click cleaner that does all of this in your browser is in development.',
+    q: 'How does the cleaner make sure hidden text is really gone?',
+    a: 'By not trying to be clever. Deleting individual text objects means calculating exactly which ones are covered, and an error there leaves readable text in a document you were told was safe. Instead, any page carrying hidden text is replaced with a flat picture of itself, so no text objects remain on it at all. Those pages look and print identically; they can no longer be selected or searched. Pages with nothing to hide are left exactly as they were.',
+  },
+  {
+    q: 'Does the cleaner change my original file?',
+    a: 'Never. You get a new copy in your downloads folder, named with a -cleaned suffix. The file on your disk is not touched. After cleaning you can scan the result in the same page to confirm it came out empty.',
   },
   {
     q: 'Does a clean report mean the document is safe to publish?',
@@ -68,6 +72,10 @@ const faqs = [
   {
     q: 'How large a file can it handle?',
     a: 'Anything your browser can hold in memory. Documents beyond 60 pages are scanned to that depth by default to keep the tab responsive; the limit is a setting, not a hard constraint.',
+  },
+  {
+    q: 'What does it cost?',
+    a: 'Nothing, and there is no account. The web tool stays free — it costs nothing to run, because your machine does the work. Paid work will be a command-line version for teams that need this checked automatically on every outgoing document, which is a different problem from checking one file by hand.',
   },
 ];
 
@@ -83,17 +91,18 @@ const faqSchema = {
 ---
 
 <Base
-  title="ZeroLeak — find what your PDF is still leaking, without uploading it"
-  description="Scan a PDF for text hidden under redaction boxes, invisible text, embedded files, retained earlier revisions and identifying metadata. Runs entirely in your browser — the file is never uploaded."
+  title="ZeroLeak — find and remove what your PDF is still leaking, without uploading it"
+  description="Scan a PDF for text hidden under redaction boxes, invisible text, embedded files, retained earlier revisions and identifying metadata — then strip it all out. Runs entirely in your browser; the file is never uploaded."
 >
   <section class="hero">
     <div class="wrap">
       <span class="eyebrow">The file never leaves this tab</span>
-      <h1>See what your PDF is still carrying.</h1>
+      <h1>See what your PDF is still carrying. Then take it out.</h1>
       <p class="lede">
         Drop in a document. ZeroLeak recovers the text sitting under redaction boxes, the earlier
         drafts still stored inside the file, the names in the metadata and the files embedded in it —
-        then shows you exactly what it found. Nothing is uploaded; the scan runs here, in your browser.
+        shows you exactly what it found, and hands you a cleaned copy. Nothing is uploaded; all of it
+        runs here, in your browser.
       </p>
 
       <div
@@ -109,7 +118,7 @@ const faqSchema = {
         <input type="file" id="file" accept="application/pdf,.pdf" class="sr" />
       </div>
       <p class="privacy-note">
-        <span>No upload · No account · Works offline</span>
+        <span>No upload · No account · Free · Works offline</span>
       </p>
 
       <div id="status" class="status" hidden>
@@ -154,10 +163,40 @@ const faqSchema = {
         select-all and copy — reads the instructions, not the picture.
       </p>
       <p>
-        Real redaction means deleting the text objects themselves and then drawing the box over the
-        gap they left. If your workflow is "insert a filled shape" in a PDF editor, a word processor,
-        or an image annotation tool, you have not redacted anything. <strong>Scan the finished file
-        before it goes out</strong> — that is what this page is for.
+        Real redaction means the text itself has to stop existing. If your workflow is "insert a
+        filled shape" in a PDF editor, a word processor, or an image annotation tool, you have not
+        redacted anything. <strong>Scan the finished file before it goes out</strong> — that is what
+        this page is for.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="cleaning">
+    <div class="narrow prose">
+      <h2>How the cleaning works</h2>
+      <p>
+        Finding a leak is only useful if you can close it, so every report comes with a cleaner. It
+        runs in the same tab, on the same file, and gives you back a new copy — your original is
+        never modified.
+      </p>
+      <p>
+        Metadata, embedded files, scripts and comments are simply deleted, along with every object
+        that stops being referenced once they are gone. That last part matters more than it sounds:
+        a PDF writer will happily carry orphaned objects into the output, so content you thought was
+        removed can be written straight back into the "cleaned" file. Saving also rewrites the
+        document as a single revision, which is what discards the earlier versions it was carrying.
+      </p>
+      <p>
+        Hidden text gets different treatment. Deleting individual text objects means working out
+        precisely which ones a box covers, and a miscalculation there hands you a file that has been
+        declared safe while still carrying the words. So instead, <strong>any page with hidden text
+        is replaced by a flat picture of itself</strong>. No text objects remain on it to recover.
+        The page looks and prints exactly as before; it can no longer be selected or searched. Pages
+        with nothing to hide are left untouched.
+      </p>
+      <p>
+        You do not have to believe any of that. <strong>Scan the cleaned file</strong> — there is a
+        button for it right after cleaning — and see the report come back empty.
       </p>
     </div>
   </section>
@@ -172,20 +211,20 @@ const faqSchema = {
         disclosure you were trying to prevent.
       </p>
       <p>
-        ZeroLeak has no scanning backend. The parser is compiled into the page and runs in your
-        browser; the site is static files on a CDN. There is nowhere for your document to be sent
-        and nothing to store it in.
+        ZeroLeak has no backend. The parser and the cleaner are compiled into the page and run in
+        your browser; the site is static files on a CDN. There is nowhere for your document to be
+        sent and nothing to store it in.
       </p>
       <p>
         You do not have to take that on trust. <strong>Open this page, disconnect your machine from
-        the network, then scan a file.</strong> The report still appears. That is not something a
+        the network, then scan and clean a file.</strong> Both still work. That is not something a
         server-based tool can do.
       </p>
       <p>
         For completeness, here is the one thing this site does record: when a page loads it adds 1 to
         a counter of <em>page, day, referring site</em>. No cookie, no IP address, no visitor
-        identifier, no third-party analytics service. Nothing is recorded when you scan a file — not
-        the document, not its name, not what was found in it. That is the whole of it.
+        identifier, no third-party analytics service. Nothing is recorded when you scan or clean a
+        file — not the document, not its name, not what was found in it. That is the whole of it.
       </p>
     </div>
   </section>
@@ -193,18 +232,19 @@ const faqSchema = {
   <section class="band">
     <div class="narrow">
       <div class="signup">
-        <h2>The cleaner is in development</h2>
+        <h2>Checking one file at a time does not scale</h2>
         <p class="section-lede">
-          Finding the leaks is half the job. A one-click pass that truly deletes hidden text, strips
-          both metadata blocks, removes attachments and flattens a document to a single revision —
-          still entirely in your browser — is being built next. Leave an address and I will tell you
-          when it ships. Nothing else, ever.
+          If documents leave your organisation every day, the check belongs in the pipeline rather
+          than in someone's browser. I am building a command-line version that runs the same scan on
+          a folder, or on every file a build produces, and fails the run when something is still
+          carrying hidden text. If that is a problem you have, leave an address — I will write once,
+          when it is ready, and I would rather hear what you actually need before I finish it.
         </p>
         <form id="signup" novalidate>
           <input type="email" name="email" placeholder="you@firm.com" required aria-label="Email address" />
-          <button class="btn" type="submit">Notify me</button>
+          <button class="btn" type="submit">Keep me posted</button>
         </form>
-        <p class="note" id="signup-note">One email when the cleaner ships. No newsletter, no sharing.</p>
+        <p class="note" id="signup-note">One email, when it ships. No newsletter, no sharing.</p>
       </div>
     </div>
   </section>

@@ -271,3 +271,32 @@ footer .wrap { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: baseli
 footer nav { margin-left: auto; display: flex; gap: 1.1rem; }
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- cleaner ---------- */
+.cleaner {
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+  padding: 1.3rem 1.4rem; margin-top: 1.6rem;
+}
+.cleaner h3 { font-size: 1.12rem; }
+.cleaner > p { color: var(--muted); font-size: 0.92rem; margin-top: 0.5rem; }
+.opts { margin-top: 1.05rem; display: grid; gap: 0.55rem; }
+.opt { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.92rem; }
+.opt input { margin: 0.32rem 0 0; flex: 0 0 auto; accent-color: var(--ink); }
+.opt span { color: var(--muted); }
+.opt b { font-weight: 580; color: var(--ink); display: block; }
+.opt.destructive b::after {
+  content: "changes the page"; margin-left: 0.5rem; font-weight: 560; font-size: 0.7rem;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--warning);
+  background: var(--warning-bg); padding: 0.1rem 0.36rem; border-radius: 4px;
+  vertical-align: 0.08em;
+}
+.cleaner-actions { margin-top: 1.15rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.cleaner-status { font-size: 0.88rem; color: var(--muted); }
+.done {
+  margin-top: 1.1rem; border: 1px solid color-mix(in srgb, var(--good) 40%, var(--line));
+  background: var(--good-bg); border-radius: 10px; padding: 0.9rem 1rem;
+}
+.done h4 { margin: 0; font-size: 0.95rem; font-weight: 620; color: var(--good); }
+.done ul { margin: 0.55rem 0 0; padding-left: 1.1rem; font-size: 0.89rem; color: var(--ink); }
+.done li { margin-top: 0.2rem; }
+.done .cleaner-actions { margin-top: 0.95rem; }

@@ -59,6 +59,18 @@ export function countRevisions(bytes: Uint8Array): number {
   return n;
 }
 
+/** Pages carrying text that is in the file but not on the page. Only these
+ *  need the destructive flattening pass; every other page is left alone. */
+export function pagesWithHiddenText(report: Report): number[] {
+  const ids = new Set(['hidden-text', 'invisible-text', 'off-page-text']);
+  const pages = new Set<number>();
+  for (const f of report.findings) {
+    if (!ids.has(f.id)) continue;
+    for (const e of f.evidence) if (e.page != null) pages.add(e.page);
+  }
+  return [...pages].sort((a, b) => a - b);
+}
+
 type PdfjsModule = {
   getDocument: (src: unknown) => { promise: Promise<any> };
   OPS: Record<string, number>;

@@ -86,7 +86,14 @@ function reportToText(r: Report): string {
   return lines.join('\n');
 }
 
-function renderReport(r: Report, root: HTMLElement) {
+type Extras = {
+  bytes: Uint8Array;
+  pdfjs: any;
+  pages: number[];
+  cleaner: typeof import('./cleaner.ts')['renderCleaner'];
+};
+
+function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
   root.textContent = '';
 
   if (r.encrypted && !r.pages) {
@@ -143,36 +150,35 @@ function renderReport(r: Report, root: HTMLElement) {
   v.append(body);
   root.append(v);
 
+  if (extras && r.findings.length) {
+    const panel = extras.cleaner(r, extras.bytes, extras.pdfjs, extras.pages,
+      (cleaned, name) => { void scanBytes(cleaned, name); });
+    if (panel) root.append(panel);
+  }
+
   for (const f of r.findings) root.append(renderFinding(f));
 }
 
-async function scan(file: File) {
+async function scanBytes(bytes: Uint8Array, fileName: string) {
   const status = $('status');
   const statusText = $('status-text');
   const bar = $<HTMLElement>('bar');
   const report = $('report');
   report.textContent = '';
-
-  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
-    status.hidden = false;
-    statusText.textContent = `${file.name} is not a PDF.`;
-    bar.style.width = '0%';
-    return;
-  }
-
   status.hidden = false;
   $('dz').hidden = true;
   statusText.textContent = 'Loading the parser…';
   bar.style.width = '6%';
 
   try {
-    const [pdfjs, { analyzePdf }] = await Promise.all([loadPdfjs(), import('../lib/analyze.ts')]);
-    statusText.textContent = `Reading ${file.name}…`;
+    const [pdfjs, { analyzePdf, pagesWithHiddenText }, { renderCleaner }] = await Promise.all([
+      loadPdfjs(), import('../lib/analyze.ts'), import('./cleaner.ts'),
+    ]);
+    statusText.textContent = `Reading ${fileName}…`;
     bar.style.width = '18%';
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
     const r = await analyzePdf(bytes, pdfjs, {
-      fileName: file.name,
+      fileName,
       onProgress: (done, total) => {
         statusText.textContent = `Scanning page ${done} of ${total}…`;
         bar.style.width = `${20 + (done / total) * 78}%`;
@@ -181,7 +187,9 @@ async function scan(file: File) {
 
     bar.style.width = '100%';
     status.hidden = true;
-    renderReport(r, report);
+    renderReport(r, report, {
+      bytes, pdfjs, pages: pagesWithHiddenText(r), cleaner: renderCleaner,
+    });
     report.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     status.hidden = false;
@@ -190,6 +198,17 @@ async function scan(file: File) {
       `Could not read that file: ${err instanceof Error ? err.message : String(err)}`;
     bar.style.width = '0%';
   }
+}
+
+async function scan(file: File) {
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+    const status = $('status');
+    status.hidden = false;
+    $('status-text').textContent = `${file.name} is not a PDF.`;
+    $<HTMLElement>('bar').style.width = '0%';
+    return;
+  }
+  await scanBytes(new Uint8Array(await file.arrayBuffer()), file.name);
 }
 
 function wireDropzone() {
