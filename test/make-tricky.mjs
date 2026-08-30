@@ -5,6 +5,8 @@ import {
   PDFDocument, StandardFonts, rgb, PDFName,
   pushGraphicsState, popGraphicsState, setGraphicsState,
   drawEllipse, rectangle, clip, endPath,
+  beginText, endText, setTextRenderingMode, setFontAndSize, setTextMatrix, showText,
+  TextRenderingMode,
 } from 'pdf-lib';
 
 const doc = await PDFDocument.create();
@@ -102,6 +104,20 @@ page.node.set(PDFName.of('Annots'), ctx.obj([ctx.register(widget)]));
 //     font mapping looks like after extraction, not a redacted secret.
 page.drawText('!!!!', { x: 300, y: 350, size: 11, font });
 page.drawRectangle({ x: 296, y: 344, width: 40, height: 17, color: rgb(0, 0, 0) });
+
+// (K) An invisible text run on a page that is mostly a picture: this is what
+//     OCR looks like, and it must not be reported as a hidden paragraph.
+const fontRef = page.node.newFontDictionary('ZLF', font.ref);
+page.pushOperators(
+  pushGraphicsState(),
+  beginText(),
+  setTextRenderingMode(TextRenderingMode.Invisible),
+  setFontAndSize(fontRef, 10),
+  setTextMatrix(1, 0, 0, 1, 70, 300),
+  showText(font.encodeText('recognised text behind the scanned image')),
+  endText(),
+  popGraphicsState(),
+);
 
 writeFileSync('test/fixtures/tricky.pdf', await doc.save({ useObjectStreams: false }));
 console.log('wrote test/fixtures/tricky.pdf');

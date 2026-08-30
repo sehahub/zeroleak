@@ -21,6 +21,14 @@ const clean = await analyzePdf(new Uint8Array(readFileSync('test/fixtures/clean.
 console.log('clean findings:', clean.findings.map(f => `${f.severity}:${f.id}`).join(', ') || '(none)');
 ok(clean.counts.critical === 0, 'clean document raises no critical finding');
 
+// Invisible text on a page that is mostly a picture is OCR, not a hidden note.
+const trickyReport = await analyzePdf(new Uint8Array(readFileSync('test/fixtures/tricky.pdf')), pdfjs, { fileName: 'tricky.pdf' });
+const trickyIds = trickyReport.findings.map(f => f.id);
+ok(trickyIds.includes('ocr-layer'), 'invisible text over a large image is reported as an OCR layer');
+ok(!trickyIds.includes('invisible-text'), 'and is not reported as hidden text');
+ok(trickyReport.findings.find(f => f.id === 'ocr-layer').severity === 'info', 'an OCR layer is informational, not critical');
+ok(leaky.findings.find(f => f.id === 'invisible-text'), 'invisible text on a page with no image is still critical');
+
 // Linearized files carry two end-of-file markers without ever being edited.
 const { countRevisions, isLinearized } = await import('../src/lib/analyze.ts');
 const bytes = (t) => new TextEncoder().encode(t);

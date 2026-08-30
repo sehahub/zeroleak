@@ -153,7 +153,7 @@ async function report() {
     ['all documents', rows],
   ];
 
-  const IDS = ['hidden-text', 'invisible-text', 'off-page-text', 'prior-revisions',
+  const IDS = ['hidden-text', 'invisible-text', 'ocr-layer', 'off-page-text', 'prior-revisions',
     'attachments', 'javascript', 'annotations', 'form-values', 'metadata-identity', 'xmp'];
 
   for (const [name, set] of groups) {

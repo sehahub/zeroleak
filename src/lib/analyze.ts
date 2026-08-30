@@ -276,6 +276,7 @@ export async function analyzePdf(
 
   const covered: Evidence[] = [];
   const invisible: Evidence[] = [];
+  const ocr: Evidence[] = [];
   const offPage: Evidence[] = [];
   const comments: Evidence[] = [];
   const formValues: Evidence[] = [];
@@ -289,6 +290,7 @@ export async function analyzePdf(
       const scan = scanOperatorList(ol.fnArray, ol.argsArray, page.view, pdfjs.OPS);
       for (const c of scan.covered) covered.push({ page: p, label: c.color, value: clip(c.text) });
       for (const t of scan.invisible) invisible.push({ page: p, value: clip(t) });
+      for (const t of scan.ocr) ocr.push({ page: p, value: clip(t) });
       for (const t of scan.offPage) offPage.push({ page: p, value: clip(t) });
     } catch { /* page content unreadable */ }
 
@@ -330,6 +332,17 @@ export async function analyzePdf(
       why: 'Scanners add an invisible layer legitimately, for search. But it is also where content lands when someone hides a paragraph instead of deleting it — and readers surface it the moment you press Ctrl+A.',
       fix: 'Confirm every invisible run is expected OCR output; remove anything else.',
       evidence: invisible,
+    }));
+  }
+
+  if (ocr.length) {
+    findings.push(makeFinding({
+      id: 'ocr-layer', severity: 'info',
+      title: 'This document has a machine-generated text layer behind its artwork',
+      what: 'Pages that are pictures — scans, maps, plans — carry an invisible layer of text so the document can be searched. That is the feature working as intended.',
+      why: 'Worth one check all the same: this layer is what copying and searching return, and it is generated separately from the artwork. If the page was altered after the layer was made — a name painted out of a scan, for instance — the layer can still hold what the picture no longer shows.',
+      fix: 'Confirm the text layer agrees with what is visible. If the artwork was edited afterwards, regenerate the layer.',
+      evidence: ocr,
     }));
   }
 
@@ -382,7 +395,7 @@ export async function analyzePdf(
   const idOrder = [
     'hidden-text', 'invisible-text', 'prior-revisions', 'attachments', 'javascript',
     'annotations', 'form-values', 'metadata-identity', 'xmp', 'hidden-layers',
-    'off-page-text', 'external-links', 'metadata-software',
+    'off-page-text', 'ocr-layer', 'external-links', 'metadata-software',
   ];
   const rank = (f: Finding) => {
     const i = idOrder.indexOf(f.id);

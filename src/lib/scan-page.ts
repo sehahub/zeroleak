@@ -12,6 +12,9 @@ export type PageScan = {
   invisible: string[];
   offPage: string[];
   runs: number;
+  /** Invisible text lying over a picture: an OCR layer doing its job, rather
+   *  than a paragraph somebody hid. */
+  ocr: string[];
 };
 
 /** Only Normal compositing actually hides what is beneath. Highlighter pens
@@ -140,6 +143,7 @@ export function scanOperatorList(
   let tm: Matrix = IDENTITY;
   let tlm: Matrix = IDENTITY;
   let pendingClip = false;
+  const images: Box[] = [];
   const annotDepth: number[] = [];
 
   const newline = (tx: number, ty: number) => { tlm = mul([1, 0, 0, 1, tx, ty], tlm); tm = tlm; };
@@ -257,6 +261,7 @@ export function scanOperatorList(
         if (s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
         const box = intersect(transformBox(s.ctm, { x0: 0, y0: 0, x1: 1, y1: 1 }), s.clip);
         if (area(box) <= 0) break;
+        images.push(box);
         // A picture spanning most of the page is a scan or a background, not a
         // redaction patch. Treating it as a cover would flag every scanned page.
         if (pageArea > 0 && area(box) > 0.6 * pageArea) break;
@@ -267,14 +272,25 @@ export function scanOperatorList(
     }
   }
 
+  const imageArea = images.reduce((a, b) => a + area(b), 0);
+  const pageIsPicture = pageArea > 0 && imageArea > 0.5 * pageArea;
+
   const vx0 = view[0], vy0 = view[1], vx1 = view[2], vy1 = view[3];
   const covered: PageScan['covered'] = [];
   const invisible: string[] = [];
+  const ocr: string[] = [];
   const offPage: string[] = [];
 
   for (const r of runs) {
     if (!hasSubstance(r.text)) continue;
-    if (r.invisible) { invisible.push(r.text); continue; }
+    if (r.invisible) {
+      // Text drawn invisibly over a picture is the searchable layer of a scan.
+      // A page built from many image tiles counts as a picture too, since the
+      // recognised text runs across the seams between them.
+      const overImage = images.length > 0 && unionCoverage(r.box, images) >= 0.5;
+      (overImage || pageIsPicture ? ocr : invisible).push(r.text);
+      continue;
+    }
     const outside = r.box.x1 < vx0 || r.box.x0 > vx1 || r.box.y1 < vy0 || r.box.y0 > vy1;
     if (outside) { offPage.push(r.text); continue; }
     const over = covers.filter((c) => c.order > r.order && unionCoverage(r.box, [c.box]) > 0.02);
@@ -286,5 +302,16 @@ export function scanOperatorList(
     if (drawnInTheOpen(r, runs, covers)) continue;
     covered.push({ text: r.text, color: over[0].color, box: r.box });
   }
-  return { covered, invisible, offPage, runs: runs.length };
+  // A page whose text is almost entirely invisible does not contain a hidden
+  // paragraph — its text layer is a machine-generated overlay on artwork, which
+  // is how scans, maps and CAD exports are made searchable. Someone hiding a
+  // paragraph leaves a handful of invisible runs among many visible ones.
+  const visibleCount = runs.length - invisible.length - ocr.length;
+  const invisibleCount = invisible.length + ocr.length;
+  if (invisibleCount >= 10 && invisibleCount > 3 * visibleCount) {
+    ocr.push(...invisible);
+    invisible.length = 0;
+  }
+
+  return { covered, invisible, ocr, offPage, runs: runs.length };
 }
