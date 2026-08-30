@@ -103,7 +103,8 @@ function renderReport(r: Report, root: HTMLElement) {
 
   const clean = r.counts.critical === 0 && r.counts.warning === 0;
   const v = el('div', `verdict ${r.counts.critical ? 'has-critical' : clean ? 'is-clean' : ''}`);
-  v.append(el('div', 'verdict-score', String(r.counts.critical + r.counts.warning)));
+  // The headline number has to be the one the sentence beside it is counting.
+  v.append(el('div', 'verdict-score', String(r.counts.critical || r.counts.warning)));
 
   const body = el('div', 'verdict-body');
   body.append(el('h2', undefined,

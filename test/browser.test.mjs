@@ -60,7 +60,8 @@ ok(/891-23-4567/.test(text), 'browser report recovers text hidden under the blac
 ok(/settlement ceiling/.test(text), 'browser report surfaces invisible text');
 ok(/Jane Doe/.test(text), 'browser report surfaces the author metadata');
 ok(/severance_master\.csv/.test(text), 'browser report lists the embedded file');
-ok(Number(verdict) >= 5, `verdict counts the leaks (got ${verdict})`);
+const headline = await page.$eval('.verdict-body h2', (n) => n.textContent);
+ok(headline.startsWith(verdict + ' '), `headline number matches the score (score ${verdict}, headline "${headline}")`);
 ok(errors.length === 0, `no console errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
 
 // Nothing may be sent anywhere: assert no request left the origin.
