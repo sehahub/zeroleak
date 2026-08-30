@@ -16,9 +16,9 @@ const exe=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program F
 const browser=await puppeteer.launch({executablePath:exe,headless:true,args:['--no-sandbox']});
 const page=await browser.newPage();
 await page.setViewport({width:1280,height:1150});
-await page.goto(base+'/guides/redact-a-pdf-properly/',{waitUntil:'networkidle0'});
-await page.screenshot({path:'shots/guide-light.png'});
-await page.evaluate(()=>window.scrollBy(0,1500));
+await page.goto(base+'/research/government-pdfs/',{waitUntil:'networkidle0'});
+await page.screenshot({path:'shots/study-top.png'});
+await page.evaluate(()=>window.scrollBy(0,1250));
 await new Promise(r=>setTimeout(r,300));
-await page.screenshot({path:'shots/guide-mid.png'});
+await page.screenshot({path:'shots/study-mid.png'});
 await browser.close();server.close();console.log('ok');

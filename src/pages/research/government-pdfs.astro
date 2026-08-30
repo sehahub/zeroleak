@@ -31,7 +31,7 @@ const CHECKS = [
   ['attachments', 'A complete embedded file', 'Another document stapled inside this one.'],
   ['ocr-layer', 'A machine-generated text layer', 'Normal for a scan or a plan. Listed because it is what copying returns.'],
   ['annotations', 'Review comments', 'Notes carrying the name of whoever wrote them.'],
-  ['hidden-text', 'Text under an opaque shape', 'The failure everyone worries about.'],
+  ['hidden-text', 'Text under an opaque shape', 'The failure everyone worries about. The single flag in this sample was cover-page template text, not a withheld passage.'],
 ] as const;
 
 const rev = share(rows, 'prior-revisions');
