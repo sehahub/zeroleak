@@ -1,0 +1,207 @@
+---
+import Guide from '../../layouts/Guide.astro';
+
+const toc = [
+  { id: 'what-goes-wrong', label: 'Why a black box does not redact anything' },
+  { id: 'methods-that-fail', label: 'Methods that look right and are not' },
+  { id: 'print-to-pdf', label: 'The print-to-PDF myth' },
+  { id: 'what-works', label: 'What actually removes text' },
+  { id: 'verify', label: 'How to verify, in under a minute' },
+  { id: 'beyond-boxes', label: 'The leaks that are not on the page at all' },
+  { id: 'process', label: 'A process that survives a bad day' },
+];
+
+const related = [
+  { href: '/guides/remove-pdf-metadata', title: 'How to remove metadata from a PDF', note: 'the two metadata blocks, and why clearing one leaves the other' },
+  { href: '/guides/hidden-content-in-pdfs', title: 'What can hide inside a PDF', note: 'a field guide to the eight places content survives' },
+];
+---
+
+<Guide
+  title="How to redact a PDF so the text is actually gone"
+  metaTitle="How to redact a PDF properly — and check that it worked"
+  description="Drawing a black box over text in a PDF does not remove it; the words can be copied straight back out. Here is what actually removes text, which methods only look like they do, and how to verify a finished file in under a minute."
+  path="/guides/redact-a-pdf-properly"
+  kicker="Guide"
+  standfirst="Every published redaction failure has the same cause, and it is not carelessness — it is a reasonable assumption about how PDFs work that happens to be wrong."
+  updated="2026-08-30"
+  toc={toc}
+  related={related}
+>
+  <h2 id="what-goes-wrong">Why a black box does not redact anything</h2>
+  <p class="lead">
+    A PDF page is not a picture. It is a list of drawing instructions that a reader executes in
+    order, and the two instructions that matter here are independent of each other.
+  </p>
+  <p>
+    The first says <strong>write these words at this position</strong>. The second says
+    <strong>fill this rectangle in black</strong>. The reader carries them out in sequence, the
+    rectangle lands on top, and on screen the words are gone. The instruction that writes the words
+    is still in the file, exactly as it was.
+  </p>
+  <p>
+    Anything that reads the instructions rather than looking at the picture therefore sees the
+    original text: select-all and copy, any text-extraction library, the search index of whatever
+    system the file is later filed in. This is why redaction failures are usually discovered by
+    accident, by someone who pasted a document into an email and watched the blacked-out names
+    reappear.
+  </p>
+  <div class="callout bad">
+    <b>The rule</b>
+    <p>
+      Covering is not removing. If your method adds something to the page, the text is still there.
+      Redaction has to take something away.
+    </p>
+  </div>
+
+  <h2 id="methods-that-fail">Methods that look right and are not</h2>
+  <p>
+    All of these produce a document that looks correctly redacted at every stage of a normal review,
+    including on the reviewer's screen and on paper.
+  </p>
+  <div class="scroll-x">
+    <table class="cmp">
+      <thead>
+        <tr><th>What people do</th><th>What the file ends up containing</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Draw a filled rectangle or use a drawing/markup tool</td>
+          <td>The original text, plus a rectangle drawn on top of it.</td>
+        </tr>
+        <tr>
+          <td>Use the highlighter set to black</td>
+          <td>The original text, with a black highlight annotation over it. Often the annotation can simply be deleted.</td>
+        </tr>
+        <tr>
+          <td>Change the font colour to black on a black background, or to white</td>
+          <td>The original text, in a colour nobody can see. Copying it recovers everything.</td>
+        </tr>
+        <tr>
+          <td>Cover it in Word, then export to PDF</td>
+          <td>Depends entirely on the shape used. A drawn shape leaves the text; deleting the text and typing <code>[REDACTED]</code> does not.</td>
+        </tr>
+        <tr>
+          <td>Crop the page so the sensitive part is off the edge</td>
+          <td>Everything. Cropping changes the visible window, not the stored content, and it is reversible.</td>
+        </tr>
+        <tr>
+          <td>Paste a black image over the area</td>
+          <td>The original text, underneath an image.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="print-to-pdf">The print-to-PDF myth</h2>
+  <p>
+    "Print to PDF flattens everything" is the most confidently repeated piece of bad advice in this
+    area. It is sometimes true and sometimes not, which is worse than being simply wrong, because
+    it works often enough that people trust it.
+  </p>
+  <p>
+    Most print-to-PDF drivers rebuild the page from the same drawing instructions rather than from
+    an image of it. Text that goes in as text usually comes out as text — including text that had a
+    black rectangle sitting on top of it. What actually changes is the file's <em>history</em>:
+    earlier revisions, form field values and annotations are commonly dropped, which is genuinely
+    useful for other kinds of leak. Just not for this one.
+  </p>
+  <div class="callout">
+    <b>If you take one thing from this page</b>
+    <p>
+      Never treat a conversion step as a redaction step. Whatever you do, the final file is the one
+      that has to be checked.
+    </p>
+  </div>
+
+  <h2 id="what-works">What actually removes text</h2>
+  <p>There are only three approaches that end with the words no longer in the file.</p>
+  <ol class="steps">
+    <li>
+      <strong>Delete the text at the source, before the PDF exists.</strong> Edit the original
+      document, remove the sensitive words, put a placeholder in their place, and export a fresh
+      PDF. This is the most reliable method available to anyone, and it needs no special software.
+      Its limitation is that you must still hold the source file.
+    </li>
+    <li>
+      <strong>Use a dedicated redaction feature, not a drawing tool.</strong> Professional PDF
+      editors distinguish between marking an area and applying the redaction — the second step is
+      the one that deletes content, and it is a separate, deliberate action. If the feature you are
+      using is in the same menu as shapes, arrows and highlighters, it is a drawing tool.
+    </li>
+    <li>
+      <strong>Turn the affected pages into images.</strong> Render the page to a picture and rebuild
+      the PDF from it. Nothing can be recovered because no text objects remain. The cost is real:
+      those pages stop being selectable, searchable and accessible to a screen reader, and the file
+      grows. It is the right trade when certainty matters more than convenience, and it is what
+      ZeroLeak's cleaner does to affected pages.
+    </li>
+  </ol>
+  <p>
+    Whichever you choose, the sensitive text has to be gone before the black box goes on. A box on
+    top of nothing is a fine visual marker; a box on top of text is a lie.
+  </p>
+
+  <h2 id="verify">How to verify, in under a minute</h2>
+  <p>
+    Verification is not optional, because every failure mode above is invisible in a normal review.
+    Two checks, in increasing order of thoroughness:
+  </p>
+  <ol class="steps">
+    <li>
+      <strong>Select and copy.</strong> Open the finished PDF, select the whole page (Ctrl+A or
+      Cmd+A), copy, and paste into a plain text editor. If redacted words appear, you have your
+      answer immediately. This catches the common cases and takes ten seconds.
+    </li>
+    <li>
+      <strong>Scan the structure.</strong> Copying only reveals what a viewer chooses to expose. It
+      will not show you an invisible text layer, content pushed off the page, an earlier revision
+      of the document still stored inside the file, or the author's name in the metadata. A
+      structural scan reads the file itself. <a href="/">ZeroLeak</a> does this in your browser —
+      the document is not uploaded anywhere — and shows you the exact text it was able to recover
+      from underneath each box.
+    </li>
+  </ol>
+  <div class="callout good">
+    <b>Check the file you are about to send</b>
+    <p>
+      Not the draft, not the version before the last edit. Redaction survives right up until
+      somebody re-exports the document and quietly reintroduces the text layer.
+    </p>
+  </div>
+
+  <h2 id="beyond-boxes">The leaks that are not on the page at all</h2>
+  <p>
+    A document can be perfectly redacted and still give away more than the redaction hid. In
+    practice these are found more often than failed boxes:
+  </p>
+  <ul>
+    <li><strong>Author and title metadata.</strong> Enough to identify the individual who prepared an anonymously filed document, and a working title that names the matter.</li>
+    <li><strong>Earlier revisions.</strong> A PDF saved incrementally keeps every previous state of itself, including the paragraph you deleted before sending.</li>
+    <li><strong>Embedded files.</strong> Whole spreadsheets stapled inside a report, invisible in most readers.</li>
+    <li><strong>Review comments.</strong> Candid internal notes, tagged with the name of whoever wrote them.</li>
+    <li><strong>Form field values.</strong> Stored separately from the page you see, and sometimes retaining what was there before.</li>
+  </ul>
+  <p>
+    <a href="/guides/hidden-content-in-pdfs">A field guide to all of them is here</a>, and
+    <a href="/guides/remove-pdf-metadata">removing metadata has its own page</a>.
+  </p>
+
+  <h2 id="process">A process that survives a bad day</h2>
+  <p>
+    Individual care does not scale and does not survive deadlines. What works is making the check
+    a step rather than a habit:
+  </p>
+  <ul>
+    <li><strong>Redact in the source document</strong> wherever you still have it, and export fresh.</li>
+    <li><strong>Never let a conversion count as a redaction.</strong></li>
+    <li><strong>Scan the final artefact</strong>, after every re-export, as the last step before release.</li>
+    <li><strong>Strip metadata at the same moment</strong>, so it cannot be forgotten separately.</li>
+    <li><strong>Make the check someone's job, not everyone's</strong>, or automate it so it is nobody's.</li>
+  </ul>
+  <p>
+    The organisations this has happened to were not careless. They reviewed the document, looked at
+    the black boxes, and saw exactly what they expected to see. The only thing that catches this is
+    a check that reads the file instead of looking at it.
+  </p>
+</Guide>

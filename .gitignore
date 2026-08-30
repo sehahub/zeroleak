@@ -6,3 +6,5 @@ dist/
 shots/
 .tmp-downloads/
 test/corpus/
+research/corpus/
+research/manifest.json

@@ -1,0 +1,74 @@
+---
+import Base from './Base.astro';
+
+interface Props {
+  title: string;
+  metaTitle?: string;
+  description: string;
+  path: string;
+  kicker: string;
+  standfirst: string;
+  updated: string;
+  toc: { id: string; label: string }[];
+  related?: { href: string; title: string; note: string }[];
+}
+
+const { title, metaTitle, description, path, kicker, standfirst, updated, toc, related = [] } = Astro.props;
+const site = Astro.site ?? new URL('https://zeroleak.sehahub.info');
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description,
+  datePublished: updated,
+  dateModified: updated,
+  mainEntityOfPage: new URL(path, site).href,
+  author: { '@type': 'Organization', name: 'ZeroLeak' },
+  publisher: { '@type': 'Organization', name: 'ZeroLeak' },
+};
+---
+
+<Base title={metaTitle ?? title} description={description} path={path}>
+  <section class="guide">
+    <div class="narrow">
+      <p class="kicker">{kicker}</p>
+      <h1>{title}</h1>
+      <p class="standfirst">{standfirst}</p>
+
+      <nav class="toc" aria-label="On this page">
+        <b>On this page</b>
+        <ol>
+          {toc.map((t) => <li><a href={`#${t.id}`}>{t.label}</a></li>)}
+        </ol>
+      </nav>
+
+      <article class="body">
+        <slot />
+      </article>
+
+      <div class="cta">
+        <h3>Check a document now</h3>
+        <p>
+          Drop a PDF into ZeroLeak and see what it is still carrying — text under redaction boxes,
+          identifying metadata, embedded files, earlier drafts. It runs in your browser, so the file
+          is never uploaded, and the cleaner runs there too.
+        </p>
+        <a class="btn" href="/">Open the scanner</a>
+      </div>
+
+      {related.length > 0 && (
+        <div class="more">
+          <b>Read next</b>
+          <ul>
+            {related.map((r) => (
+              <li><a href={r.href}>{r.title}</a> <span>— {r.note}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+    </div>
+  </section>
+</Base>

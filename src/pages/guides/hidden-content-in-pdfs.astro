@@ -1,0 +1,214 @@
+---
+import Guide from '../../layouts/Guide.astro';
+
+const toc = [
+  { id: 'why', label: 'Why a PDF holds more than it shows' },
+  { id: 'covered', label: '1. Text under a filled shape' },
+  { id: 'invisible', label: '2. Invisible text' },
+  { id: 'revisions', label: '3. Earlier versions of the same file' },
+  { id: 'attachments', label: '4. Embedded files' },
+  { id: 'scripts', label: '5. Scripts and open actions' },
+  { id: 'metadata', label: '6. Two blocks of metadata' },
+  { id: 'annotations', label: '7. Comments and form values' },
+  { id: 'offpage', label: '8. Content outside the page' },
+  { id: 'ocr', label: 'What none of this covers' },
+];
+
+const related = [
+  { href: '/guides/redact-a-pdf-properly', title: 'How to redact a PDF so the text is actually gone', note: 'the failure everybody repeats, and the three methods that work' },
+  { href: '/guides/remove-pdf-metadata', title: 'How to remove metadata from a PDF', note: 'including the block most tools leave behind' },
+];
+---
+
+<Guide
+  title="What can hide inside a PDF"
+  metaTitle="What can hide inside a PDF — a field guide to eight kinds of hidden content"
+  description="Text under redaction boxes, invisible text layers, earlier revisions, embedded files, scripts, two metadata blocks, review comments and content drawn off the page. What each one is, how it gets there, and how to find and remove it."
+  path="/guides/hidden-content-in-pdfs"
+  kicker="Reference"
+  standfirst="A PDF is a container, not an image. Eight kinds of content routinely survive inside one without appearing on any page — here is each of them, how it gets there, and what to do about it."
+  updated="2026-08-30"
+  toc={toc}
+  related={related}
+>
+  <h2 id="why">Why a PDF holds more than it shows</h2>
+  <p class="lead">
+    The format was designed so a document would look identical everywhere, and to do that it stores
+    a complete description of the document rather than a picture of it. Everything below is a
+    consequence of that design working as intended.
+  </p>
+  <p>
+    None of these are exotic. Every one of them appears in ordinary published documents, produced by
+    mainstream software, by people doing their jobs correctly. The problem is not that PDFs are
+    unsafe — it is that what you see when you open one is a rendering, and the rendering is not the
+    file.
+  </p>
+
+  <h2 id="covered">1. Text under a filled shape</h2>
+  <p>
+    <strong>What it is:</strong> live, selectable text with an opaque rectangle painted on top of
+    it. The most consequential item on this list, because it is usually the result of a deliberate
+    attempt to hide exactly that text.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> someone draws a black box over a name using a markup or
+    drawing tool. The reader paints the box after the text, so the text disappears from view. It is
+    never removed.
+  </p>
+  <p>
+    <strong>How to find it:</strong> select the whole page and copy it into a text editor. For a
+    thorough answer, a structural scan compares the position of each text run against every opaque
+    shape painted after it, and reports the words it can recover.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> the text itself has to go —
+    <a href="/guides/redact-a-pdf-properly">covered in full here</a>. Painting over it again does
+    not help.
+  </p>
+
+  <h2 id="invisible">2. Invisible text</h2>
+  <p>
+    <strong>What it is:</strong> text drawn in a rendering mode that paints nothing at all. It is
+    fully searchable and copyable; it simply never appears.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> usually legitimately. When a scanner runs OCR over a page
+    image, it puts the recognised text into an invisible layer so the scan becomes searchable. That
+    is the feature working. It also gets there when someone hides a paragraph instead of deleting
+    it, and when a template leaves unused fields behind.
+  </p>
+  <p>
+    <strong>Why it matters:</strong> an OCR layer is generated from the image, so if a redaction was
+    applied to the text but not to the picture — or the OCR ran before the redaction — the invisible
+    layer can contain what the visible page does not.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> confirm every invisible run is expected OCR output. Anything
+    else should be deleted, which in practice means flattening the page.
+  </p>
+
+  <h2 id="revisions">3. Earlier versions of the same file</h2>
+  <p>
+    <strong>What it is:</strong> the complete prior state of the document, stored inside the current
+    file.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> PDFs support incremental saving. Rather than rewriting the
+    file, an editor appends the changes and leaves everything before them intact. This is a feature
+    — it makes saving fast and it is what allows a signature to cover a specific version — but it
+    means the paragraph you deleted is still in the file, along with the state of every form field
+    before you cleared it.
+  </p>
+  <p>
+    <strong>How to find it:</strong> count the end-of-file markers. More than one usually means
+    revisions were appended. One caveat that trips up naive checks: a linearized ("fast web view")
+    file legitimately has two markers without ever having been edited, so a tool that counts without
+    accounting for that will accuse perfectly clean documents.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> re-save the document as a single revision. Any tool that
+    rewrites the file rather than appending to it will do this, and it is one of the few cases where
+    exporting a fresh copy genuinely fixes the problem.
+  </p>
+
+  <h2 id="attachments">4. Embedded files</h2>
+  <p>
+    <strong>What it is:</strong> complete files — spreadsheets, documents, images, archives — stored
+    inside the PDF and travelling with it.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> sometimes deliberately, as with standards documents that
+    ship their own source. Sometimes as a side effect: publishing pipelines embed their
+    configuration, and mail systems package originals alongside converted copies.
+  </p>
+  <p>
+    <strong>Why it matters:</strong> most readers give no indication that attachments exist. A report
+    can carry the underlying dataset it was aggregated from, with none of the aggregation applied.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> delete the embedded file entries. Be aware that unlinking them
+    is not always enough — a writer that keeps unreferenced objects will carry the content into the
+    "cleaned" output anyway.
+  </p>
+
+  <h2 id="scripts">5. Scripts and open actions</h2>
+  <p>
+    <strong>What it is:</strong> JavaScript stored in the document, and instructions to run something
+    when it opens.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> forms use scripts for validation and calculation, which is
+    entirely normal. The same mechanism can request a remote resource the moment the file is opened,
+    which turns an ordinary document into a read receipt that reports where and when it was viewed.
+    It is also the classic route for exploiting a reader.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> strip document-level scripts, open actions and additional
+    actions. A document meant to be read does not need any of them; a form that needs them should be
+    scrutinised rather than trusted.
+  </p>
+
+  <h2 id="metadata">6. Two blocks of metadata</h2>
+  <p>
+    <strong>What it is:</strong> the document information dictionary and an XMP packet, holding
+    author, title, software, timestamps, editing history and an identifier that links copies of a
+    file to a common origin.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> automatically, from the software. Nobody decides to include
+    it, which is why nobody thinks to remove it.
+  </p>
+  <p>
+    <strong>The trap:</strong> clearing the properties panel updates the dictionary and often leaves
+    the XMP packet exactly as it was — still naming the author you thought you had removed.
+    <a href="/guides/remove-pdf-metadata">Detail here.</a>
+  </p>
+
+  <h2 id="annotations">7. Comments and form values</h2>
+  <p>
+    <strong>What it is:</strong> review notes, sticky notes, highlights and the values held in
+    interactive form fields.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> the ordinary review process. Comments are stored with the
+    name of whoever wrote them, and they are candid because they were internal.
+  </p>
+  <p>
+    <strong>Why form fields are their own problem:</strong> a field's value lives separately from the
+    page you see. A field cleared on screen can still hold its previous value, and a field marked
+    hidden is never displayed at all while remaining perfectly readable in the file.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> delete the annotations and flatten the form so values become
+    ordinary page content, or clear the fields outright.
+  </p>
+
+  <h2 id="offpage">8. Content outside the page</h2>
+  <p>
+    <strong>What it is:</strong> text positioned beyond the page boundary, where no reader displays
+    it.
+  </p>
+  <p>
+    <strong>How it gets there:</strong> two ways. Someone crops a page and assumes cropping removes
+    what it hides — it does not, it changes the visible window and is reversible. Or a professional
+    publishing system prints production information in the margin of its internal proofs, and the
+    released PDF keeps drawing it just outside the trimmed page. Internal file paths, workflow
+    status and operator identifiers all turn up this way in documents from organisations that
+    publish at scale.
+  </p>
+  <p>
+    <strong>How to remove it:</strong> delete the content rather than moving it out of frame. Since
+    it is text, the same options as any other hidden text apply.
+  </p>
+
+  <h2 id="ocr">What none of this covers</h2>
+  <p>
+    Structural analysis reads the file. It cannot read a picture. Text that was burned into a
+    scanned image is invisible to every check on this page — and so is the judgement call about
+    whether the visible content should have been published at all.
+  </p>
+  <p>
+    Treat a structural scan as what it is: the check that catches the failures nobody can see, run
+    on the exact file you are about to send.
+  </p>
+</Guide>

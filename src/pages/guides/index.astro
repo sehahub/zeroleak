@@ -1,0 +1,58 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const guides = [
+  {
+    href: '/guides/redact-a-pdf-properly',
+    title: 'How to redact a PDF so the text is actually gone',
+    note: 'Why a black box removes nothing, which methods only look like they work, the three that do, and how to verify a finished file in under a minute.',
+  },
+  {
+    href: '/guides/remove-pdf-metadata',
+    title: 'How to remove metadata from a PDF',
+    note: 'A PDF carries two separate metadata blocks. Clearing the document properties leaves the second one — along with the author name and the identifier that links copies of a file together.',
+  },
+  {
+    href: '/guides/hidden-content-in-pdfs',
+    title: 'What can hide inside a PDF',
+    note: 'A field guide to the eight kinds of content that survive inside a document without appearing on any page, how each one gets there, and how to remove it.',
+  },
+];
+---
+
+<Base
+  title="Guides — PDF redaction, metadata and hidden content"
+  description="Practical guides on redacting PDFs so the text is genuinely removed, stripping both metadata blocks, and finding the content that hides inside a document without appearing on any page."
+  path="/guides"
+>
+  <section class="guide">
+    <div class="narrow">
+      <p class="kicker">Guides</p>
+      <h1>Working notes on what PDFs give away</h1>
+      <p class="standfirst">
+        Written while building the scanner, mostly because the existing advice on these topics is
+        confidently wrong in ways that get people hurt.
+      </p>
+
+      <div class="more" style="margin-top:2.25rem">
+        <ul>
+          {guides.map((g) => (
+            <li style="margin-top:1.4rem">
+              <a href={g.href} style="font-size:1.06rem">{g.title}</a>
+              <p style="color:var(--muted);font-size:0.93rem;margin-top:0.35rem">{g.note}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="cta">
+        <h3>Or just check a document</h3>
+        <p>
+          The scanner reads a PDF in your browser and reports what it is still carrying. Nothing is
+          uploaded, and there is no account.
+        </p>
+        <a class="btn" href="/">Open the scanner</a>
+      </div>
+    </div>
+  </section>
+</Base>

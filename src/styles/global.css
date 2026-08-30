@@ -300,3 +300,86 @@ footer nav { margin-left: auto; display: flex; gap: 1.1rem; }
 .done ul { margin: 0.55rem 0 0; padding-left: 1.1rem; font-size: 0.89rem; color: var(--ink); }
 .done li { margin-top: 0.2rem; }
 .done .cleaner-actions { margin-top: 0.95rem; }
+
+/* ---------- guides ---------- */
+.guide { padding: clamp(2.25rem, 6vw, 3.5rem) 0 1rem; }
+.guide .kicker {
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted);
+}
+.guide h1 { font-size: clamp(1.8rem, 4.4vw, 2.6rem); margin-top: 0.7rem; max-width: 24ch; }
+.guide .standfirst {
+  margin-top: 1rem; font-size: clamp(1rem, 2vw, 1.14rem); color: var(--muted); max-width: 60ch;
+}
+.toc {
+  margin-top: 2rem; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 1rem 1.15rem;
+}
+.toc b { font-size: 0.74rem; font-weight: 620; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.toc ol { margin: 0.6rem 0 0; padding-left: 1.2rem; }
+.toc li { margin-top: 0.25rem; font-size: 0.93rem; }
+.toc a { color: var(--ink); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+article.body { margin-top: 2.5rem; }
+article.body h2 {
+  font-size: clamp(1.25rem, 2.6vw, 1.55rem); margin-top: 2.75rem; scroll-margin-top: 4.5rem;
+  padding-top: 1.6rem; border-top: 1px solid var(--line);
+}
+article.body h2:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+article.body h3 { margin-top: 1.9rem; font-size: 1.05rem; }
+article.body p { margin-top: 1rem; color: var(--muted); }
+article.body p.lead { color: var(--ink); }
+article.body strong { color: var(--ink); font-weight: 600; }
+article.body ul, article.body ol { margin-top: 1rem; padding-left: 1.3rem; color: var(--muted); }
+article.body li { margin-top: 0.45rem; }
+article.body li strong { color: var(--ink); }
+article.body a { color: var(--info); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--info) 35%, transparent); }
+article.body a:hover { border-bottom-color: var(--info); }
+article.body code {
+  font-family: var(--mono); font-size: 0.88em; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 4px; padding: 0.06em 0.32em;
+}
+
+.callout {
+  margin-top: 1.6rem; border: 1px solid var(--line); border-left: 3px solid var(--warning);
+  border-radius: var(--radius); background: var(--surface); padding: 1rem 1.15rem;
+}
+.callout.bad { border-left-color: var(--critical); }
+.callout.good { border-left-color: var(--good); }
+.callout b { display: block; font-size: 0.93rem; margin-bottom: 0.3rem; }
+.callout p { margin-top: 0.35rem !important; font-size: 0.92rem; }
+
+.cta {
+  margin-top: 2.5rem; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); padding: 1.4rem 1.5rem;
+}
+.cta h3 { font-size: 1.1rem; }
+.cta p { color: var(--muted); font-size: 0.94rem; margin-top: 0.5rem; }
+.cta .btn { margin-top: 1rem; }
+
+.steps { counter-reset: step; list-style: none; padding-left: 0; }
+.steps > li {
+  counter-increment: step; position: relative; padding-left: 2.2rem; margin-top: 1.1rem;
+}
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0.05rem;
+  width: 1.55rem; height: 1.55rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface-2); border: 1px solid var(--line);
+  font-size: 0.8rem; font-weight: 620; color: var(--ink);
+}
+
+table.cmp { width: 100%; border-collapse: collapse; margin-top: 1.4rem; font-size: 0.92rem; }
+table.cmp th, table.cmp td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.cmp th { font-weight: 620; color: var(--ink); font-size: 0.8rem; letter-spacing: 0.03em; text-transform: uppercase; }
+table.cmp td { color: var(--muted); }
+table.cmp td:first-child { color: var(--ink); font-weight: 550; }
+.scroll-x { overflow-x: auto; }
+
+.more { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+.more b { font-size: 0.74rem; font-weight: 620; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.more ul { list-style: none; padding: 0; margin: 0.7rem 0 0; }
+.more li { margin-top: 0.5rem; }
+.more a { color: var(--ink); text-decoration: none; font-weight: 550; }
+.more a:hover { text-decoration: underline; }
+.more span { color: var(--muted); font-weight: 400; }

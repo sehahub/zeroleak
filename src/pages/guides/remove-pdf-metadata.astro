@@ -1,0 +1,145 @@
+---
+import Guide from '../../layouts/Guide.astro';
+
+const toc = [
+  { id: 'whats-in-there', label: 'What a PDF records about you' },
+  { id: 'two-blocks', label: 'Why clearing the properties is not enough' },
+  { id: 'consequences', label: 'What this actually costs people' },
+  { id: 'see-it', label: 'How to see what your file is carrying' },
+  { id: 'remove', label: 'How to remove it' },
+  { id: 'not-metadata', label: 'The things that are not metadata but leak like it' },
+];
+
+const related = [
+  { href: '/guides/redact-a-pdf-properly', title: 'How to redact a PDF so the text is actually gone', note: 'why black boxes fail, and what to do instead' },
+  { href: '/guides/hidden-content-in-pdfs', title: 'What can hide inside a PDF', note: 'a field guide to the eight places content survives' },
+];
+---
+
+<Guide
+  title="How to remove metadata from a PDF"
+  metaTitle="How to remove metadata from a PDF — including the block most tools miss"
+  description="A PDF carries two separate metadata blocks. Clearing the document properties leaves the second one, XMP, untouched — along with the author name, the original filename and the identifier that links copies of the file together. Here is what is in there and how to get rid of all of it."
+  path="/guides/remove-pdf-metadata"
+  kicker="Guide"
+  standfirst="Most guides tell you to open document properties and clear the fields. That removes about half of what is actually stored, and rarely the half that matters."
+  updated="2026-08-30"
+  toc={toc}
+  related={related}
+>
+  <h2 id="whats-in-there">What a PDF records about you</h2>
+  <p class="lead">
+    Metadata is written automatically, by software, without anyone deciding to include it. That is
+    exactly what makes it dangerous: nobody chose to put it there, so nobody thinks to take it out.
+  </p>
+  <ul>
+    <li><strong>Author.</strong> Usually the account name of whoever created the source document, which in a corporate environment is often a real name or a login that maps to one.</li>
+    <li><strong>Title.</strong> Frequently the original filename, which is where working titles live — the ones that name a matter, a counterparty, or a person.</li>
+    <li><strong>Subject and keywords.</strong> Occasionally a summary written for internal filing.</li>
+    <li><strong>Creator and Producer.</strong> The application that wrote the document and the library that produced the PDF, usually with exact version numbers.</li>
+    <li><strong>Creation and modification dates.</strong> To the second, often with a timezone offset that indicates where the machine was.</li>
+    <li><strong>The document identifier.</strong> A pair of values written when the file is first created. The first half stays the same across later saves — which means two files you believe are unrelated can be shown to descend from one original.</li>
+  </ul>
+
+  <h2 id="two-blocks">Why clearing the properties is not enough</h2>
+  <p>
+    A PDF can carry its metadata in two independent places, and most files carry it in both:
+  </p>
+  <ul>
+    <li><strong>The document information dictionary</strong> — the classic set of fields, and the one the "Properties" panel in every reader shows you.</li>
+    <li><strong>An XMP packet</strong> — a block of XML embedded in the file. It duplicates the basic fields and adds more: editing history, the identifier of the document it was derived from, the tool chain that touched it, and sometimes the original filename in full.</li>
+  </ul>
+  <p>
+    Editing the properties panel updates the first. Whether it touches the second depends entirely
+    on the software. Plenty of tools that advertise metadata removal clear the dictionary and leave
+    the XMP packet sitting in the file, still naming the author you just removed.
+  </p>
+  <div class="callout bad">
+    <b>How this shows up</b>
+    <p>
+      Someone clears the author field, checks the properties panel, sees it empty, and sends the
+      file. The XMP packet still contains <code>dc:creator</code> with their name in it, and any
+      tool that reads XMP in preference to the dictionary displays it.
+    </p>
+  </div>
+
+  <h2 id="consequences">What this actually costs people</h2>
+  <p>
+    The failure mode is rarely dramatic. It is a small fact that turns out to matter:
+  </p>
+  <ul>
+    <li>An anonymous submission to a regulator, a court or a newsroom that names its author in the file properties.</li>
+    <li>A document circulated as an independent assessment, whose Producer field shows it was written by the party it assesses.</li>
+    <li>A "final" contract whose modification timestamp is three hours after the deadline it was meant to meet.</li>
+    <li>Two leaked documents from different sources, tied to a single origin by a shared document identifier.</li>
+    <li>An exact software build number, which tells anyone interested precisely which reader vulnerabilities an organisation is exposed to.</li>
+  </ul>
+
+  <h2 id="see-it">How to see what your file is carrying</h2>
+  <p>
+    You cannot remove what you have not looked at, and the properties panel is not a reliable view
+    of what is stored. Options, from most convenient to most thorough:
+  </p>
+  <ol class="steps">
+    <li>
+      <strong>Scan it.</strong> <a href="/">ZeroLeak</a> lists both metadata blocks, field by field,
+      with the values, and does it in your browser — the document is never uploaded. It also reports
+      what else is in the file besides metadata.
+    </li>
+    <li>
+      <strong>Use exiftool</strong> if you are comfortable at a command line.
+      <code>exiftool -a -G1 file.pdf</code> prints every field it can find, grouped by which block it
+      came from, which makes the dictionary-versus-XMP split visible.
+    </li>
+    <li>
+      <strong>Open the file in a text editor</strong> for a crude but revealing look. PDFs are
+      partly plain text; searching for <code>&lt;x:xmpmeta</code> will often show you the XMP packet
+      verbatim.
+    </li>
+  </ol>
+
+  <h2 id="remove">How to remove it</h2>
+  <ol class="steps">
+    <li>
+      <strong>Fix it at the source where you can.</strong> The name in the PDF came from the account
+      that made the original document. If you routinely publish, setting a neutral author in your
+      word processor's settings stops the problem happening rather than cleaning it up afterwards.
+    </li>
+    <li>
+      <strong>Strip both blocks together.</strong> Whatever tool you use, confirm it removes the XMP
+      packet and not only the properties. ZeroLeak's cleaner removes both, along with the document
+      identifier, and rewrites the file so the removal cannot be undone from an earlier revision
+      still stored inside it.
+    </li>
+    <li>
+      <strong>Check the result rather than trusting it.</strong> Re-scan the cleaned file. This
+      takes seconds and is the only step that actually tells you anything.
+    </li>
+  </ol>
+  <div class="callout">
+    <b>A caution about re-exporting</b>
+    <p>
+      Opening a cleaned PDF in an editor and saving it again will write fresh metadata: a new
+      Producer, a new modification date, sometimes a new author. Strip metadata last, after every
+      other edit is finished.
+    </p>
+  </div>
+
+  <h2 id="not-metadata">The things that are not metadata but leak like it</h2>
+  <p>
+    Metadata removal is often the only hygiene step a document gets, which leaves the rest in place.
+    A file with immaculate properties can still be carrying:
+  </p>
+  <ul>
+    <li><strong>Earlier versions of itself</strong>, kept because the file was saved incrementally.</li>
+    <li><strong>Embedded files</strong> — a source spreadsheet stapled inside a report.</li>
+    <li><strong>Text under redaction boxes</strong>, which is a separate problem with a
+      <a href="/guides/redact-a-pdf-properly">separate answer</a>.</li>
+    <li><strong>Review comments</strong>, carrying the names of the people who wrote them.</li>
+    <li><strong>Production notes drawn outside the page boundary</strong>, which is more common in
+      professionally typeset documents than most people expect.</li>
+  </ul>
+  <p>
+    <a href="/guides/hidden-content-in-pdfs">The full list, and how each one gets there, is here.</a>
+  </p>
+</Guide>
