@@ -21,5 +21,17 @@ const clean = await analyzePdf(new Uint8Array(readFileSync('test/fixtures/clean.
 console.log('clean findings:', clean.findings.map(f => `${f.severity}:${f.id}`).join(', ') || '(none)');
 ok(clean.counts.critical === 0, 'clean document raises no critical finding');
 
+// Linearized files carry two end-of-file markers without ever being edited.
+const { countRevisions, isLinearized } = await import('../src/lib/analyze.ts');
+const bytes = (t) => new TextEncoder().encode(t);
+const EOF = '%%EOF';
+ok(countRevisions(bytes('%PDF-1.7 body ' + EOF)) === 1, 'a plain file counts as one revision');
+ok(countRevisions(bytes('%PDF-1.7 body ' + EOF + ' more ' + EOF)) === 2, 'two markers without linearization means an incremental update');
+ok(isLinearized(bytes('%PDF-1.7 1 0 obj << /Linearized 1 >> endobj')), 'linearization is detected from the header');
+ok(countRevisions(bytes('%PDF-1.7 << /Linearized 1 >> body ' + EOF + ' rest ' + EOF)) === 1,
+  'a linearized file with two markers is not reported as edited');
+ok(countRevisions(bytes('%PDF-1.7 << /Linearized 1 >> body ' + EOF + ' rest ' + EOF + ' update ' + EOF)) === 2,
+  'a linearized file that was then edited still counts the extra revision');
+
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);

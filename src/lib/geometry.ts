@@ -60,3 +60,11 @@ export function unionCoverage(inner: Box, outers: Box[]): number {
   }
   return hit / (N * N);
 }
+
+/** Intersection of two boxes; may come back empty (x1<x0). */
+export function intersect(a: Box, b: Box): Box {
+  return {
+    x0: Math.max(a.x0, b.x0), y0: Math.max(a.y0, b.y0),
+    x1: Math.min(a.x1, b.x1), y1: Math.min(a.y1, b.y1),
+  };
+}

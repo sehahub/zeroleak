@@ -38,6 +38,9 @@ ok(!/Highlighted/.test(hidden), 'a Multiply-blended highlighter pen is not a cov
 ok(!/Draft figures/.test(hidden), 'a 35%-alpha wash is not a cover');
 ok(!/Circled/.test(hidden), 'a filled ellipse over text is not a cover');
 ok(!/full-page overlay/.test(hidden), 'a full-page background image is not a cover');
+ok(!/Section heading/.test(hidden), 'a page-sized rect clipped to a hairline is not a cover');
+ok(!/MODEL/.test(hidden), 'a label drawn behind and again on top of its box is not hidden');
+ok(!/must stay visible/.test(hidden), 'an annotation is placed by its Rect, not at the page origin');
 ok(tricky.covered.length === 1, 'exactly one finding in the tricky document, got ' + tricky.covered.length);
 
 console.log(fail ? `\n${fail} FAILING` : '\nall green');

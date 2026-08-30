@@ -1,7 +1,7 @@
 // Walks a page's operator list to find content that is present in the file
 // but not readable on screen: text painted over, text drawn invisibly,
 // and text placed outside the visible page area.
-import { area, IDENTITY, mul, transformBox, unionCoverage } from './geometry.ts';
+import { area, IDENTITY, intersect, mul, transformBox, unionCoverage } from './geometry.ts';
 import type { Box, Matrix } from './geometry.ts';
 
 export type TextRun = { box: Box; text: string; invisible: boolean; order: number };
@@ -26,7 +26,7 @@ const FILL_OPS = new Set([22, 23, 24, 25, 26, 27]);
 const DRAW_ARITY: Record<number, number> = { 0: 2, 1: 2, 2: 6, 3: 4, 4: 0 };
 
 type GState = {
-  ctm: Matrix; fill: string; alpha: number; blend: string;
+  ctm: Matrix; fill: string; alpha: number; blend: string; clip: Box;
   fontSize: number; leading: number; charSpacing: number; wordSpacing: number; hScale: number;
   render: number;
 };
@@ -101,6 +101,22 @@ function extractRects(coords: ArrayLike<number>): Box[] | null {
   return rects.length ? rects : null;
 }
 
+const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
+
+/** True when the same text is painted somewhere on this page with nothing
+ *  opaque on top of it. */
+function drawnInTheOpen(run: TextRun, runs: TextRun[], covers: Cover[]): boolean {
+  const key = norm(run.text);
+  if (!key) return true;
+  for (const other of runs) {
+    if (other === run || other.invisible || norm(other.text) !== key) continue;
+    const over = covers.filter((c) => c.order > other.order && unionCoverage(other.box, [c.box]) > 0.02);
+    if (!over.length) return true;
+    if (unionCoverage(other.box, over.map((c) => c.box)) < 0.85) return true;
+  }
+  return false;
+}
+
 export function scanOperatorList(
   fnArray: ArrayLike<number>,
   argsArray: ArrayLike<unknown>,
@@ -112,11 +128,14 @@ export function scanOperatorList(
   const pageArea = Math.max(0, view[2] - view[0]) * Math.max(0, view[3] - view[1]);
   let s: GState = {
     ctm: IDENTITY, fill: '#000000', alpha: 1, blend: 'Normal',
+    clip: { x0: -1e6, y0: -1e6, x1: 1e6, y1: 1e6 },
     fontSize: 0, leading: 0, charSpacing: 0, wordSpacing: 0, hScale: 1, render: 0,
   };
   const stack: GState[] = [];
   let tm: Matrix = IDENTITY;
   let tlm: Matrix = IDENTITY;
+  let pendingClip = false;
+  const annotDepth: number[] = [];
 
   const newline = (tx: number, ty: number) => { tlm = mul([1, 0, 0, 1, tx, ty], tlm); tm = tlm; };
 
@@ -177,20 +196,62 @@ export function scanOperatorList(
         s.charSpacing = Number(args[1]) || 0;
         newline(0, -s.leading);
         emitText((args[2] as unknown[]) ?? [], i); break;
+      case OPS.clip: case OPS.eoClip: pendingClip = true; break;
+      // pdf.js hands an annotation's placement to the renderer through
+      // beginAnnotation rather than as a transform operator. Skipping it puts
+      // every annotation's contents at the page origin.
+      case OPS.beginAnnotation: {
+        stack.push(cloneState(s));
+        annotDepth.push(stack.length);
+        s = cloneState(s);
+        const rect = args[1] as ArrayLike<number> | undefined;
+        if (rect && rect.length >= 4) {
+          s.clip = intersect(s.clip, transformBox(s.ctm, {
+            x0: Math.min(rect[0], rect[2]), y0: Math.min(rect[1], rect[3]),
+            x1: Math.max(rect[0], rect[2]), y1: Math.max(rect[1], rect[3]),
+          }));
+        }
+        if (args[2]) s.ctm = mul(toMatrix(args[2]), s.ctm);
+        if (args[3]) s.ctm = mul(toMatrix(args[3]), s.ctm);
+        break;
+      }
+      case OPS.endAnnotation: {
+        const depth = annotDepth.pop();
+        if (depth != null) {
+          while (stack.length > depth) stack.pop();
+          const saved = stack.pop();
+          if (saved) s = saved;
+        }
+        break;
+      }
       case OPS.constructPath: {
         const paint = Number(args[0]);
+        // A path that is establishing a clip narrows everything drawn after it.
+        // Without this, a hairline border painted as a page-sized rectangle
+        // clipped to a sliver reads as a box covering the whole page.
+        if (pendingClip) {
+          pendingClip = false;
+          const mm = args[2] as ArrayLike<number> | undefined;
+          if (mm && mm.length >= 4) {
+            const bbox = transformBox(s.ctm, { x0: mm[0], y0: mm[1], x1: mm[2], y1: mm[3] });
+            s.clip = intersect(s.clip, bbox);
+          }
+        }
         if (!FILL_OPS.has(paint) || s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
         const rects = extractRectsFromArg(args[1]);
         if (!rects) break;
         for (const r of rects) {
-          covers.push({ box: transformBox(s.ctm, r), color: s.fill, order: i, kind: 'fill' });
+          const box = intersect(transformBox(s.ctm, r), s.clip);
+          if (area(box) <= 0) continue;
+          covers.push({ box, color: s.fill, order: i, kind: 'fill' });
         }
         break;
       }
       case OPS.paintImageXObject:
       case OPS.paintInlineImageXObject: {
         if (s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
-        const box = transformBox(s.ctm, { x0: 0, y0: 0, x1: 1, y1: 1 });
+        const box = intersect(transformBox(s.ctm, { x0: 0, y0: 0, x1: 1, y1: 1 }), s.clip);
+        if (area(box) <= 0) break;
         // A picture spanning most of the page is a scan or a background, not a
         // redaction patch. Treating it as a cover would flag every scanned page.
         if (pageArea > 0 && area(box) > 0.6 * pageArea) break;
@@ -212,9 +273,12 @@ export function scanOperatorList(
     if (outside) { offPage.push(r.text); continue; }
     const over = covers.filter((c) => c.order > r.order && unionCoverage(r.box, [c.box]) > 0.02);
     if (!over.length) continue;
-    if (unionCoverage(r.box, over.map((c) => c.box)) >= 0.85) {
-      covered.push({ text: r.text, color: over[0].color, box: r.box });
-    }
+    if (unionCoverage(r.box, over.map((c) => c.box)) < 0.85) continue;
+    // Diagram labels and button captions are routinely drawn once behind a
+    // shape and again on top of it. A run whose exact text is also painted in
+    // the open on the same page is hiding nothing.
+    if (drawnInTheOpen(r, runs, covers)) continue;
+    covered.push({ text: r.text, color: over[0].color, box: r.box });
   }
   return { covered, invisible, offPage, runs: runs.length };
 }

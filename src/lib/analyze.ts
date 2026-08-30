@@ -28,6 +28,15 @@ export type Report = {
   ms: number;
 };
 
+// Annotation types that carry human commentary. Links and widgets also have
+// contents, but a table-of-contents link is not a leaked review note and must
+// not be reported as one.
+const MARKUP_ANNOTATIONS = new Set([
+  'Text', 'FreeText', 'Highlight', 'Underline', 'StrikeOut', 'Squiggly',
+  'Caret', 'Stamp', 'Ink', 'Polygon', 'PolyLine', 'Line', 'Square', 'Circle',
+  'FileAttachment', 'Sound', 'Popup',
+]);
+
 const MAX_EVIDENCE = 25;
 const DEFAULT_PAGE_LIMIT = 60;
 
@@ -47,9 +56,7 @@ function makeFinding(f: Omit<Finding, 'evidence'> & { evidence: Evidence[] }): F
     : f;
 }
 
-/** Counts complete revisions kept inside the file. A PDF that has been edited
- *  and saved incrementally keeps every earlier version verbatim. */
-export function countRevisions(bytes: Uint8Array): number {
+function countEofMarkers(bytes: Uint8Array): number {
   let n = 0;
   for (let i = 0; i <= bytes.length - 5; i++) {
     // %%EOF
@@ -57,6 +64,22 @@ export function countRevisions(bytes: Uint8Array): number {
       && bytes[i + 3] === 0x4f && bytes[i + 4] === 0x46) { n++; i += 4; }
   }
   return n;
+}
+
+/** A linearized ("fast web view") file is written in two sections and ends up
+ *  with two end-of-file markers by design, having never been edited. */
+export function isLinearized(bytes: Uint8Array): boolean {
+  const head = bytes.subarray(0, Math.min(bytes.length, 4096));
+  let text = '';
+  for (let i = 0; i < head.length; i++) text += String.fromCharCode(head[i]);
+  return text.includes('/Linearized');
+}
+
+/** Counts complete revisions kept inside the file. A PDF that has been edited
+ *  and saved incrementally keeps every earlier version verbatim. */
+export function countRevisions(bytes: Uint8Array): number {
+  const markers = countEofMarkers(bytes);
+  return isLinearized(bytes) ? Math.max(1, markers - 1) : markers;
 }
 
 /** Pages carrying text that is in the file but not on the page. Only these
@@ -270,7 +293,7 @@ export async function analyzePdf(
       for (const a of annots ?? []) {
         const author = a.titleObj?.str ?? a.title ?? '';
         const body = a.contentsObj?.str ?? a.contents ?? '';
-        if (body && String(body).trim()) {
+        if (body && String(body).trim() && MARKUP_ANNOTATIONS.has(String(a.subtype))) {
           comments.push({ page: p, label: String(author || a.subtype || 'comment'), value: clip(String(body)) });
         }
         if (a.fieldName && a.fieldValue != null && String(a.fieldValue).trim()) {
