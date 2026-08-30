@@ -1,0 +1,226 @@
+---
+import Base from '../layouts/Base.astro';
+
+const checks = [
+  {
+    title: 'Text under redaction boxes',
+    sev: 'critical',
+    body: 'A black rectangle drawn over a name hides nothing. ZeroLeak reads the paint order, finds live text sitting beneath an opaque shape, and shows you the words it recovered.',
+  },
+  {
+    title: 'Invisible text',
+    sev: 'critical',
+    body: 'Text can be written in a rendering mode that draws nothing at all. It stays fully searchable and copyable. Legitimate for scanned OCR, alarming everywhere else.',
+  },
+  {
+    title: 'Earlier versions of the file',
+    sev: 'critical',
+    body: 'PDFs are often saved incrementally, appending each edit and keeping everything before it. Deleted paragraphs and corrected figures survive inside the same file.',
+  },
+  {
+    title: 'Embedded files',
+    sev: 'critical',
+    body: 'Whole spreadsheets and documents can be stapled inside a PDF and travel with it. Most readers never show that they are there.',
+  },
+  {
+    title: 'Document JavaScript',
+    sev: 'critical',
+    body: 'Code stored in the file runs when the document opens. It is used to signal that a file was received, and it is a standard delivery route for reader exploits.',
+  },
+  {
+    title: 'Author, title and XMP metadata',
+    sev: 'warning',
+    body: 'Two separate metadata blocks record who made the file, with what software, and when. Clearing document properties usually leaves the XMP packet untouched.',
+  },
+  {
+    title: 'Comments and filled form fields',
+    sev: 'warning',
+    body: 'Review threads carry the name of whoever wrote them, and form values live separately from the page you see on screen.',
+  },
+  {
+    title: 'Content pushed off the page',
+    sev: 'warning',
+    body: 'Cropping changes what is displayed, not what is stored. Text moved past the page edge stays in the file and returns the moment the crop is undone.',
+  },
+];
+
+const faqs = [
+  {
+    q: 'Is my file uploaded anywhere?',
+    a: 'No. The scan runs inside your browser tab using WebAssembly and JavaScript. Your PDF is never sent to a server, because there is no server-side scanning code to send it to. You can verify this: load the page, disconnect from the network, and scan a file. It still works.',
+  },
+  {
+    q: 'Why is drawing a black box over text not a redaction?',
+    a: 'A PDF stores the text and the box as two independent objects. The box is painted after the text, so on screen the text disappears. The text object is untouched. Selecting the area and copying it, or running any text-extraction tool, returns the original words in full.',
+  },
+  {
+    q: 'What should I do about the findings?',
+    a: 'For hidden text, the underlying text objects must be deleted, not covered. For metadata and attachments, strip them before sending. For a file with earlier revisions inside, re-save it as a single revision. A one-click cleaner that does all of this in your browser is in development.',
+  },
+  {
+    q: 'Does a clean report mean the document is safe to publish?',
+    a: 'It means the structural leaks ZeroLeak knows how to detect are absent. It cannot judge whether the visible content itself should be public, and it does not read images — text burned into a scan is outside its reach. Treat it as one check in a review, not the whole review.',
+  },
+  {
+    q: 'Can it open password-protected PDFs?',
+    a: 'Not yet. Encrypted files are detected and reported as such, but their contents are not scanned.',
+  },
+  {
+    q: 'How large a file can it handle?',
+    a: 'Anything your browser can hold in memory. Documents beyond 60 pages are scanned to that depth by default to keep the tab responsive; the limit is a setting, not a hard constraint.',
+  },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+---
+
+<Base
+  title="ZeroLeak — find what your PDF is still leaking, without uploading it"
+  description="Scan a PDF for text hidden under redaction boxes, invisible text, embedded files, retained earlier revisions and identifying metadata. Runs entirely in your browser — the file is never uploaded."
+>
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow">The file never leaves this tab</span>
+      <h1>See what your PDF is still carrying.</h1>
+      <p class="lede">
+        Drop in a document. ZeroLeak recovers the text sitting under redaction boxes, the earlier
+        drafts still stored inside the file, the names in the metadata and the files embedded in it —
+        then shows you exactly what it found. Nothing is uploaded; the scan runs here, in your browser.
+      </p>
+
+      <div
+        class="dropzone"
+        id="dz"
+        role="button"
+        tabindex="0"
+        aria-label="Choose a PDF to scan"
+      >
+        <div class="dz-title">Drop a PDF here</div>
+        <div class="dz-sub">or paste one with ⌘V / Ctrl+V</div>
+        <div class="dz-or"><span class="btn">Choose a file</span></div>
+        <input type="file" id="file" accept="application/pdf,.pdf" class="sr" />
+      </div>
+      <p class="privacy-note">
+        <span>No upload · No account · Works offline</span>
+      </p>
+
+      <div id="status" class="status" hidden>
+        <span id="status-text">Reading file…</span>
+        <div class="bar"><i id="bar"></i></div>
+      </div>
+
+      <div id="report" class="report"></div>
+    </div>
+  </section>
+
+  <section class="band" id="checks">
+    <div class="wrap">
+      <h2>What ZeroLeak looks for</h2>
+      <p class="section-lede">
+        Eight classes of content that are present in a PDF but absent from the page you see.
+      </p>
+      <div class="grid">
+        {checks.map((c) => (
+          <article class="card">
+            <h3><span class={`chip ${c.sev}`}>{c.sev}</span>{c.title}</h3>
+            <p>{c.body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="redaction">
+    <div class="narrow prose">
+      <h2>A black box is not a redaction</h2>
+      <p>
+        This is the single most repeated document-security failure, and it keeps happening to
+        organisations with serious legal review processes — courts, regulators, national newspapers,
+        government agencies. The mechanism is always the same.
+      </p>
+      <p>
+        A PDF page is a list of drawing instructions. <strong>Write the words at this position</strong>,
+        then <strong>fill this rectangle in black</strong>. A reader executes them in order, so the
+        rectangle lands on top and the words vanish from view. But the instruction that writes the
+        words is still in the file, unchanged. Every text-extraction tool ever written — including
+        select-all and copy — reads the instructions, not the picture.
+      </p>
+      <p>
+        Real redaction means deleting the text objects themselves and then drawing the box over the
+        gap they left. If your workflow is "insert a filled shape" in a PDF editor, a word processor,
+        or an image annotation tool, you have not redacted anything. <strong>Scan the finished file
+        before it goes out</strong> — that is what this page is for.
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="privacy">
+    <div class="narrow prose">
+      <h2>Why "no upload" is a fact here, not a promise</h2>
+      <p>
+        Every other free PDF tool asks you to upload the document to a server you do not control. For
+        a marketing brochure that is fine. For a settlement agreement, a patient record, or a source
+        document you have promised to protect, it is disqualifying — the upload is itself the
+        disclosure you were trying to prevent.
+      </p>
+      <p>
+        ZeroLeak has no scanning backend. The parser is compiled into the page and runs in your
+        browser; the site is static files on a CDN. There is nowhere for your document to be sent
+        and nothing to store it in.
+      </p>
+      <p>
+        You do not have to take that on trust. <strong>Open this page, disconnect your machine from
+        the network, then scan a file.</strong> The report still appears. That is not something a
+        server-based tool can do.
+      </p>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="narrow">
+      <div class="signup">
+        <h2>The cleaner is in development</h2>
+        <p class="section-lede">
+          Finding the leaks is half the job. A one-click pass that truly deletes hidden text, strips
+          both metadata blocks, removes attachments and flattens a document to a single revision —
+          still entirely in your browser — is being built next. Leave an address and I will tell you
+          when it ships. Nothing else, ever.
+        </p>
+        <form id="signup" novalidate>
+          <input type="email" name="email" placeholder="you@firm.com" required aria-label="Email address" />
+          <button class="btn" type="submit">Notify me</button>
+        </form>
+        <p class="note" id="signup-note">One email when the cleaner ships. No newsletter, no sharing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="narrow">
+      <h2>Questions</h2>
+      <div class="faq">
+        {faqs.map((f) => (
+          <details>
+            <summary>{f.q}</summary>
+            <p>{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+
+  <script>
+    import { mount } from '../scripts/app.ts';
+    mount();
+  </script>
+</Base>

@@ -4,6 +4,7 @@
   "exclude": ["dist", "node_modules"],
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "types": ["@cloudflare/workers-types"]
   }
 }

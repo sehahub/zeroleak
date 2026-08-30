@@ -338,8 +338,18 @@ export async function analyzePdf(
     }));
   }
 
-  const order: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
-  findings.sort((a, b) => order[a.severity] - order[b.severity]);
+  // Within a severity, lead with the finding a reader can act on most directly.
+  const sevOrder: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
+  const idOrder = [
+    'hidden-text', 'invisible-text', 'prior-revisions', 'attachments', 'javascript',
+    'annotations', 'form-values', 'metadata-identity', 'xmp', 'hidden-layers',
+    'off-page-text', 'external-links', 'metadata-software',
+  ];
+  const rank = (f: Finding) => {
+    const i = idOrder.indexOf(f.id);
+    return sevOrder[f.severity] * 100 + (i < 0 ? 99 : i);
+  };
+  findings.sort((a, b) => rank(a) - rank(b));
 
   const counts = { critical: 0, warning: 0, info: 0 };
   for (const f of findings) counts[f.severity]++;

@@ -7,6 +7,10 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "test": "node --experimental-strip-types test/scan.test.mjs && node --experimental-strip-types test/analyze.test.mjs && node test/browser.test.mjs",
+    "typecheck": "tsc --noEmit --ignoreConfig --skipLibCheck --target es2022 --lib es2022,dom --module esnext --moduleResolution bundler --strict --allowImportingTsExtensions --types @cloudflare/workers-types src/worker.ts src/lib/analyze.ts src/lib/scan-page.ts src/lib/geometry.ts",
+    "fixtures": "node test/make-fixture.mjs",
+    "shots": "node test/shot.mjs shots",
     "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
@@ -14,5 +18,11 @@
     "astro": "^7.2.9",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260830.1",
+    "puppeteer-core": "^25.9.0",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.127.1"
   }
 }
