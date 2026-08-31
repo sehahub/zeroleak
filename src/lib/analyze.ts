@@ -297,7 +297,16 @@ export async function analyzePdf(
   const links: Evidence[] = [];
 
   for (let p = 1; p <= limit; p++) {
-    const page = await doc.getPage(p);
+    // Fetching the page has to be inside the guard as well. A document with one
+    // page that will not open should come back as a report with that page
+    // marked unreadable, not as a file the tool refused outright.
+    let page: any;
+    try {
+      page = await doc.getPage(p);
+    } catch {
+      pagesFailed.push(p);
+      continue;
+    }
 
     try {
       const ol = await page.getOperatorList();

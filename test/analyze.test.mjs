@@ -41,5 +41,35 @@ ok(countRevisions(bytes('%PDF-1.7 << /Linearized 1 >> body ' + EOF + ' rest ' + 
 ok(countRevisions(bytes('%PDF-1.7 << /Linearized 1 >> body ' + EOF + ' rest ' + EOF + ' update ' + EOF)) === 2,
   'a linearized file that was then edited still counts the extra revision');
 
+// A page the scanner cannot read is not a page with nothing on it. The failure
+// used to be swallowed, and the document came back reported as clean.
+{
+  const brokenPage = 2;
+  const stubbed = {
+    OPS: pdfjs.OPS,
+    getDocument(src) {
+      const task = pdfjs.getDocument(src);
+      return {
+        promise: task.promise.then((doc) => new Proxy(doc, {
+          get(target, key) {
+            if (key === 'getPage') {
+              return async (n) => {
+                if (n === brokenPage) throw new Error('simulated parser failure');
+                return target.getPage(n);
+              };
+            }
+            const value = target[key];
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        })),
+      };
+    },
+  };
+
+  const r = await analyzePdf(new Uint8Array(readFileSync('test/fixtures/geometry.pdf')), stubbed, { fileName: 'broken.pdf' });
+  ok(r.pagesFailed.includes(brokenPage), `a page that cannot be read is recorded (${JSON.stringify(r.pagesFailed)})`);
+  ok(r.pages > r.pagesFailed.length, 'the rest of the document is still scanned');
+}
+
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);

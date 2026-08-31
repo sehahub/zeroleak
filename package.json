@@ -16,7 +16,8 @@
     "test:unit": "node test/make-fixture.mjs && node test/make-tricky.mjs && node test/make-geometry.mjs && node test/make-vertical.mjs && node test/make-evasion.mjs && node test/schema.test.mjs && node --experimental-strip-types test/xmp.test.mjs && node --experimental-strip-types test/scan.test.mjs && node --experimental-strip-types test/analyze.test.mjs && node --experimental-strip-types test/clean.test.mjs && node --experimental-strip-types test/geometry.test.mjs && node --experimental-strip-types test/evasion.test.mjs",
     "corpus": "node --experimental-strip-types test/corpus.mjs",
     "corpus:fetch": "node --experimental-strip-types test/corpus.mjs fetch",
-    "corpus:bless": "node --experimental-strip-types test/corpus.mjs bless"
+    "corpus:bless": "node --experimental-strip-types test/corpus.mjs bless",
+    "mutation": "node test/mutation.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

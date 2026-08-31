@@ -78,5 +78,32 @@ ok(!tText.includes('8842-1109-3320'), 'tricky: the genuinely redacted account nu
 ok(!(await stillRecoverable(t.bytes, '8842-1109-3320')),
   'tricky: and it is not recoverable from the object graph either');
 
+// More hidden lines than the report will show. The evidence list is shortened
+// for display, and driving the cleaner from the shortened list left every page
+// past the cut-off untouched under a report that said the file was done.
+{
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const many = await PDFDocument.create();
+  const font = await many.embedFont(StandardFonts.Helvetica);
+  for (let i = 1; i <= 30; i++) {
+    const page = many.addPage([612, 792]);
+    page.drawText(`BEYOND-THE-CUT-${i}`, { x: 60, y: 700, size: 12, font });
+    page.drawRectangle({ x: 56, y: 694, width: 200, height: 18, color: rgb(0, 0, 0) });
+  }
+  const bytes = new Uint8Array(await many.save());
+  const found = await analyzePdf(bytes, pdfjs, { fileName: 'many.pdf' });
+  const hidden = found.findings.find((f) => f.id === 'hidden-text');
+
+  ok((hidden?.truncated ?? 0) > 0, `the report shortens the evidence list (${hidden?.evidence.length} shown, ${hidden?.truncated} more)`);
+  ok(hidden.pages.length === 30, `but the finding still knows all ${hidden.pages.length} pages`);
+
+  const { bytes: out } = await cleanPdf(bytes, {
+    flattenPages: pagesWithHiddenText(found), rasterize: stub,
+  });
+  const missed = [];
+  for (let i = 1; i <= 30; i++) if (await stillRecoverable(out, `BEYOND-THE-CUT-${i}`)) missed.push(i);
+  ok(missed.length === 0, `every page is cleaned, not just the shown ones${missed.length ? ' — missed ' + missed.join(', ') : ''}`);
+}
+
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);
