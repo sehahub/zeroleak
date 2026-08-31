@@ -4,7 +4,12 @@
 import { area, IDENTITY, intersect, mul, transformBox, unionCoverage } from './geometry.ts';
 import type { Box, Matrix } from './geometry.ts';
 
-export type TextRun = { box: Box; text: string; invisible: boolean; order: number };
+export type TextRun = {
+  box: Box; text: string; invisible: boolean; order: number;
+  /** The clip in force when this run was painted. Text clipped down to
+   *  nothing is as absent from the page as text pushed off the edge. */
+  clip: Box;
+};
 export type Cover = { box: Box; color: string; order: number; kind: 'fill' | 'image' };
 
 export type PageScan = {
@@ -116,18 +121,32 @@ const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
  *  hidden text is a false alarm. */
 const hasSubstance = (t: string) => /[\p{L}\p{N}]/u.test(t);
 
-/** True when the same text is painted somewhere on this page with nothing
- *  opaque on top of it. */
+/** True when the same text is painted somewhere on this page where a reader can
+ *  actually see it. Diagram labels and button captions are routinely drawn more
+ *  than once, and a run whose words are legible elsewhere is hiding nothing.
+ *
+ *  Only filled shapes count against the other instance. Pictures sit on top of
+ *  composition text all the time in figures — treating them as concealment made
+ *  every label in a chart look redacted. */
 function drawnInTheOpen(run: TextRun, runs: TextRun[], covers: Cover[]): boolean {
   const key = norm(run.text);
   if (!key) return true;
+  const fills = covers.filter((c) => c.kind === 'fill');
   for (const other of runs) {
     if (other === run || other.invisible || norm(other.text) !== key) continue;
-    const over = covers.filter((c) => c.order > other.order && unionCoverage(other.box, [c.box]) > 0.02);
+    if (clippedAway(other)) continue;
+    const over = fills.filter((c) => c.order > other.order && unionCoverage(other.box, [c.box]) > 0.02);
     if (!over.length) return true;
     if (unionCoverage(other.box, over.map((c) => c.box)) < 0.85) return true;
   }
   return false;
+}
+
+/** Whether the clip in force reduced this run to nothing worth seeing. */
+function clippedAway(run: TextRun): boolean {
+  const whole = area(run.box);
+  if (whole <= 0) return false;
+  return area(intersect(run.box, run.clip)) / whole < 0.15;
 }
 
 export function scanOperatorList(
@@ -150,6 +169,7 @@ export function scanOperatorList(
   let pendingClip = false;
   const images: Box[] = [];
   const annotDepth: number[] = [];
+  const formDepth: number[] = [];
 
   const newline = (tx: number, ty: number) => { tlm = mul([1, 0, 0, 1, tx, ty], tlm); tm = tlm; };
 
@@ -190,7 +210,11 @@ export function scanOperatorList(
       const local = vertical
         ? { x0: -originX, y0: advance, x1: -originX + s.fontSize, y1: 0 }
         : { x0: 0, y0: -0.16 * s.fontSize, x1: advance, y1: 0.78 * s.fontSize };
-      runs.push({ box: transformBox(trm, local), text, invisible: s.render === 3 || s.render === 7, order });
+      // Rendering mode 3 is the documented way to draw nothing. Painting with a
+      // transparent fill has the same effect on screen and left the text just
+      // as copyable, so it belongs in the same bucket.
+      const unpainted = s.render === 3 || s.render === 7 || s.alpha < 0.05;
+      runs.push({ box: transformBox(trm, local), text, invisible: unpainted, order, clip: s.clip });
     }
     tm = vertical
       ? mul([1, 0, 0, 1, 0, advance], tm)
@@ -255,6 +279,35 @@ export function scanOperatorList(
         if (args[3]) s.ctm = mul(toMatrix(args[3]), s.ctm);
         break;
       }
+      // A form XObject is a nested content stream with its own placement. pdf.js
+      // inlines it and passes the matrix and bounding box here rather than as
+      // ordinary operators, so skipping this measured every form's contents at
+      // the page origin — a black box over text that lives in a form matched
+      // nothing at all. The renderer also brackets it in an implicit save and
+      // restore, without which the form's graphics state leaks onto the page.
+      case OPS.paintFormXObjectBegin: {
+        stack.push(cloneState(s));
+        formDepth.push(stack.length);
+        s = cloneState(s);
+        if (args[0]) s.ctm = mul(toMatrix(args[0]), s.ctm);
+        const bbox = args[1] as ArrayLike<number> | undefined;
+        if (bbox && bbox.length >= 4) {
+          s.clip = intersect(s.clip, transformBox(s.ctm, {
+            x0: Math.min(bbox[0], bbox[2]), y0: Math.min(bbox[1], bbox[3]),
+            x1: Math.max(bbox[0], bbox[2]), y1: Math.max(bbox[1], bbox[3]),
+          }));
+        }
+        break;
+      }
+      case OPS.paintFormXObjectEnd: {
+        const depth = formDepth.pop();
+        if (depth != null) {
+          while (stack.length > depth) stack.pop();
+          const saved = stack.pop();
+          if (saved) s = saved;
+        }
+        break;
+      }
       case OPS.endAnnotation: {
         const depth = annotDepth.pop();
         if (depth != null) {
@@ -287,6 +340,10 @@ export function scanOperatorList(
         }
         break;
       }
+      // A black bar is as often a one-pixel image mask stretched over the text
+      // as it is a filled rectangle, and only the rectangle was being seen.
+      case OPS.paintImageMaskXObject:
+      case OPS.paintSolidColorImageMask:
       case OPS.paintImageXObject:
       case OPS.paintInlineImageXObject: {
         if (s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
@@ -314,6 +371,15 @@ export function scanOperatorList(
 
   for (const r of runs) {
     if (!hasSubstance(r.text)) continue;
+
+    // Clipped down to nothing: on the page this is indistinguishable from text
+    // moved off the edge, which is already reported. Unless the same words are
+    // legible elsewhere — laying out a figure clips stray copies of a label all
+    // the time, and none of that is concealment.
+    if (clippedAway(r)) {
+      if (!drawnInTheOpen(r, runs, covers)) offPage.push(r.text);
+      continue;
+    }
     if (r.invisible) {
       // Text drawn invisibly over a picture is the searchable layer of a scan.
       // A page built from many image tiles counts as a picture too, since the

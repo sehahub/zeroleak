@@ -54,6 +54,9 @@ that looked perfect and fell apart on real documents:
 | Scans and CAD exports carrying an invisible text layer on purpose | A standing critical alarm on exactly the documents this is for |
 | A label drawn behind a shape and again on top of it | Hidden text, twice per diagram |
 | Highlighter pens using Multiply blending | An opaque cover over readable text |
+| Text inside a form XObject, placed by the form's own matrix | Nothing — the run was measured at the page origin |
+| A black bar drawn as a stretched one-pixel image mask | Nothing — only filled rectangles counted as covers |
+| Text painted with a fully transparent fill, or clipped to a point | Nothing, though neither appears on the page |
 | Text set vertically, as Japanese and Chinese often are | Nothing at all — a redaction measured as though it ran to the right |
 
 Each is now pinned by a fixture in `test/make-tricky.mjs`. Across 224 real
@@ -104,7 +107,7 @@ document id could be matched back to the file it came from.
 npm install
 npm run dev        # local dev server
 npm run build      # static build into dist/
-npm test           # 116 assertions across seven suites
+npm test           # 140 assertions across nine suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
 ```

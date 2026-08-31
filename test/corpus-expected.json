@@ -1,7 +1,8 @@
 {
  "arxiv-attention.pdf": [
   "external-links",
-  "metadata-software"
+  "metadata-software",
+  "off-page-text"
  ],
  "arxiv-bert.pdf": [
   "external-links",
@@ -73,6 +74,7 @@
  ],
  "un-sdg.pdf": [
   "metadata-software",
+  "off-page-text",
   "xmp"
  ],
  "uscourts-form.pdf": [
