@@ -1,8 +1,12 @@
 // Pages whose geometry is not the simple case: one rotated, one whose visible
 // area is a crop of a larger sheet. Both carry a genuine redaction, so the
 // cleaner has to both find it and hand back a page that still looks right.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { PDFDocument, StandardFonts, rgb, PDFName, PDFNumber } from 'pdf-lib';
+
+// git does not track empty directories, so a fresh clone has no fixtures
+// folder at all until something makes one.
+mkdirSync('test/fixtures', { recursive: true });
 
 const doc = await PDFDocument.create();
 const font = await doc.embedFont(StandardFonts.Helvetica);

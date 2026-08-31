@@ -5,7 +5,11 @@
 // No font is embedded. The glyphs come from a substitute, which is fine — this
 // fixture exists to test geometry, and it keeps the file free of any font
 // licence. A ToUnicode map makes the recovered text readable.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
+
+// git does not track empty directories, so a fresh clone has no fixtures
+// folder at all until something makes one.
+mkdirSync('test/fixtures', { recursive: true });
 
 const CODES = [...new Set([...'CONFIDENTIALVISIBLE'])].map((c) => c.charCodeAt(0));
 const hex = (n, w = 4) => n.toString(16).toUpperCase().padStart(w, '0');

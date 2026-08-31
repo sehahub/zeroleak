@@ -1,11 +1,15 @@
 // Builds a deliberately "leaky" PDF used to verify the analyzer.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import {
   PDFDocument, StandardFonts, rgb,
   pushGraphicsState, popGraphicsState, beginText, endText,
   setTextRenderingMode, setFontAndSize, setTextMatrix, showText,
   TextRenderingMode, PDFHexString, PDFName, PDFString,
 } from 'pdf-lib';
+
+// git does not track empty directories, so a fresh clone has no fixtures
+// folder at all until something makes one.
+mkdirSync('test/fixtures', { recursive: true });
 
 const doc = await PDFDocument.create();
 doc.setTitle('Q3 Layoff List — CONFIDENTIAL');

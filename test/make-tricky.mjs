@@ -1,6 +1,6 @@
 // A document full of things that LOOK like hidden text but are not, plus one
 // genuine redaction. Guards against false positives must not cost true ones.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import {
   PDFDocument, StandardFonts, rgb, PDFName,
   pushGraphicsState, popGraphicsState, setGraphicsState,
@@ -8,6 +8,10 @@ import {
   beginText, endText, setTextRenderingMode, setFontAndSize, setTextMatrix, showText,
   TextRenderingMode,
 } from 'pdf-lib';
+
+// git does not track empty directories, so a fresh clone has no fixtures
+// folder at all until something makes one.
+mkdirSync('test/fixtures', { recursive: true });
 
 const doc = await PDFDocument.create();
 const font = await doc.embedFont(StandardFonts.Helvetica);
