@@ -1,6 +1,11 @@
+-- Kept in step with src/worker.ts by hand. The live table was altered directly
+-- when note and source were added and this file was not, which would have
+-- broken every sign-up the moment anyone rebuilt the database from it.
 CREATE TABLE IF NOT EXISTS subscribers (
   email      TEXT PRIMARY KEY,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  note       TEXT,
+  source     TEXT
 );
 
 -- Aggregate counts only: no cookie, no IP, no visitor identifier of any kind.

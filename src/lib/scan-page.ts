@@ -63,7 +63,12 @@ function extractRectsFromArg(arg: unknown): Box[] | null {
   if (a.length > 0 && typeof a[0] !== 'number') {
     const all: Box[] = [];
     for (let i = 0; i < a.length; i++) {
-      const part = extractRects(a[i] as ArrayLike<number>);
+      // pdf.js emits [paintOp, [null], null] when a paint operator arrives with
+      // no path built. Reaching for .length on that threw, and the per-page
+      // catch turned one malformed operator into a whole page nobody looked at.
+      const entry = a[i];
+      if (!entry) continue;
+      const part = extractRects(entry as ArrayLike<number>);
       if (!part) return null;
       all.push(...part);
     }
@@ -332,9 +337,14 @@ export function scanOperatorList(
   // paragraph — its text layer is a machine-generated overlay on artwork, which
   // is how scans, maps and CAD exports are made searchable. Someone hiding a
   // paragraph leaves a handful of invisible runs among many visible ones.
-  const visibleCount = runs.length - invisible.length - ocr.length;
+  // Only a page that is actually a picture gets this treatment. Without that
+  // condition the rule read "the more paragraphs you hide, the less serious it
+  // is", and splitting a hidden block into ten runs was a way to turn a
+  // critical finding into an informational one on a page with no artwork at all.
+  const visibleCount = runs.filter((r) => !r.invisible && hasSubstance(r.text)).length;
   const invisibleCount = invisible.length + ocr.length;
-  if (invisibleCount >= 10 && invisibleCount > 3 * visibleCount) {
+  const machineLayer = images.length > 0 || pageIsPicture;
+  if (machineLayer && invisibleCount >= 10 && invisibleCount > 3 * visibleCount) {
     ocr.push(...invisible);
     invisible.length = 0;
   }

@@ -87,9 +87,33 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
   }
 
   if (opts.attachments) {
+    // Every one of these has to be evaluated. A file is reachable from more
+    // than one place, and the sweep at the end only drops what nothing points
+    // at — so leaving a single reference behind carries the whole file into the
+    // output while the report says it was removed. Short-circuiting these with
+    // || did exactly that: /AF kept the stream alive and the attachment came
+    // back out of a document this tool had just called clean.
     const names = catalog.lookupMaybe(n('Names'), PDFDict);
-    const had = deleteFrom(names, 'EmbeddedFiles') || deleteFrom(catalog, 'AF');
-    if (had) actions.push('Removed the embedded files');
+    const removals = [
+      deleteFrom(names, 'EmbeddedFiles'),
+      deleteFrom(catalog, 'AF'),
+      ...doc.getPages().map((page) => deleteFrom(page.node, 'AF')),
+    ];
+    // A file attachment annotation holds one too, and belongs with the files
+    // rather than with review comments.
+    for (const page of doc.getPages()) {
+      const annots = page.node.lookupMaybe(n('Annots'), PDFArray);
+      if (!annots) continue;
+      for (let i = annots.size() - 1; i >= 0; i--) {
+        const annot = ctx.lookupMaybe(annots.get(i), PDFDict);
+        const subtype = annot?.get(n('Subtype'));
+        if (subtype && String(subtype) === '/FileAttachment') {
+          annots.remove(i);
+          removals.push(true);
+        }
+      }
+    }
+    if (removals.some(Boolean)) actions.push('Removed the embedded files');
   }
 
   if (opts.scripts) {

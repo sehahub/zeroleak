@@ -16,6 +16,11 @@ export type Finding = {
   fix: string;
   evidence: Evidence[];
   truncated?: number;
+  /** Every page this finding touches, taken before the evidence list is
+   *  shortened for display. Anything that acts on a finding has to read this:
+   *  driving the cleaner from the shortened list silently left the pages past
+   *  the cut-off untouched while the report said the file was done. */
+  pages: number[];
 };
 
 export type Report = {
@@ -23,6 +28,9 @@ export type Report = {
   bytes: number;
   pages: number;
   pagesScanned: number;
+  /** Pages the scanner could not read. A page nobody looked at is not a page
+   *  with nothing on it, and the report has to say so. */
+  pagesFailed: number[];
   encrypted: boolean;
   findings: Finding[];
   counts: { critical: number; warning: number; info: number };
@@ -53,11 +61,13 @@ function entriesOf<T>(v: Map<string, T> | Record<string, T> | null | undefined):
   return Object.entries(v);
 }
 
-function makeFinding(f: Omit<Finding, 'evidence'> & { evidence: Evidence[] }): Finding {
+function makeFinding(f: Omit<Finding, 'evidence' | 'pages'> & { evidence: Evidence[] }): Finding {
   const all = f.evidence;
+  const pages = [...new Set(all.map((e) => e.page).filter((p): p is number => p != null))]
+    .sort((a, b) => a - b);
   return all.length > MAX_EVIDENCE
-    ? { ...f, evidence: all.slice(0, MAX_EVIDENCE), truncated: all.length - MAX_EVIDENCE }
-    : f;
+    ? { ...f, pages, evidence: all.slice(0, MAX_EVIDENCE), truncated: all.length - MAX_EVIDENCE }
+    : { ...f, pages };
 }
 
 function countEofMarkers(bytes: Uint8Array): number {
@@ -93,7 +103,7 @@ export function pagesWithHiddenText(report: Report): number[] {
   const pages = new Set<number>();
   for (const f of report.findings) {
     if (!ids.has(f.id)) continue;
-    for (const e of f.evidence) if (e.page != null) pages.add(e.page);
+    for (const p of f.pages) pages.add(p);
   }
   return [...pages].sort((a, b) => a - b);
 }
@@ -131,7 +141,7 @@ export async function analyzePdf(
     if (name === 'PasswordException') {
       return {
         fileName: opts.fileName ?? 'document.pdf', bytes: size, pages: 0, pagesScanned: 0,
-        encrypted: true, findings: [], counts: { critical: 0, warning: 0, info: 0 },
+        encrypted: true, findings: [], counts: { critical: 0, warning: 0, info: 0 }, pagesFailed: [],
         ms: Date.now() - started,
       };
     }
@@ -277,6 +287,7 @@ export async function analyzePdf(
   const total: number = doc.numPages;
   const limit = Math.min(total, opts.pageLimit ?? DEFAULT_PAGE_LIMIT);
 
+  const pagesFailed: number[] = [];
   const covered: Evidence[] = [];
   const invisible: Evidence[] = [];
   const ocr: Evidence[] = [];
@@ -295,7 +306,9 @@ export async function analyzePdf(
       for (const t of scan.invisible) invisible.push({ page: p, value: clip(t) });
       for (const t of scan.ocr) ocr.push({ page: p, value: clip(t) });
       for (const t of scan.offPage) offPage.push({ page: p, value: clip(t) });
-    } catch { /* page content unreadable */ }
+    } catch {
+      pagesFailed.push(p);
+    }
 
     try {
       const annots = (await page.getAnnotations()) as any[];
@@ -414,6 +427,7 @@ export async function analyzePdf(
     bytes: size,
     pages: total,
     pagesScanned: limit,
+    pagesFailed,
     encrypted,
     findings,
     counts,

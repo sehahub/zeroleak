@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { analyzePdf, pagesWithHiddenText } from '../src/lib/analyze.ts';
 import { cleanPdf } from '../src/lib/clean.ts';
+import { stillRecoverable } from './deep-search.mjs';
 
 let fail = 0;
 const ok = (c, m) => { console.log((c ? 'PASS  ' : 'FAIL  ') + m); if (!c) fail++; };
@@ -48,9 +49,20 @@ for (const s of ['891-23-4567', 'settlement ceiling', 'Kim Min-jun', 'OFFPAGE'])
   ok(!text.includes(s), `text extraction cannot recover "${s}"`);
 }
 
-// And nothing may survive anywhere in the raw bytes either.
-const raw = Buffer.from(cleaned).toString('latin1');
-for (const s of SECRETS) ok(!raw.includes(s), `raw bytes no longer contain "${s}"`);
+// And nothing may be recoverable from the file by any means. Searching the
+// raw bytes proves nothing on its own: the output is saved with object
+// streams, so every string in it is Flate-compressed and a cleaner that did
+// nothing at all would pass. This inflates every stream first.
+for (const s of SECRETS) {
+  ok(!(await stillRecoverable(cleaned, s)), `"${s}" cannot be recovered from the cleaned file`);
+}
+
+// The check has to be able to fail, so prove it on a cleaner that only re-saves.
+const untouched = (await cleanPdf(original, {})).bytes;
+const caught = [];
+for (const s of SECRETS) if (await stillRecoverable(untouched, s)) caught.push(s);
+ok(caught.length >= 4,
+  `the recovery check catches a cleaner that does nothing (${caught.length}/${SECRETS.length} secrets found)`);
 
 ok(cleaned.length > 0 && Buffer.from(cleaned.slice(0, 5)).toString() === '%PDF-', 'output is a PDF');
 
@@ -63,6 +75,8 @@ const t = await cleanPdf(tricky, {
 });
 const tText = await allText(t.bytes);
 ok(!tText.includes('8842-1109-3320'), 'tricky: the genuinely redacted account number is gone');
+ok(!(await stillRecoverable(t.bytes, '8842-1109-3320')),
+  'tricky: and it is not recoverable from the object graph either');
 
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);

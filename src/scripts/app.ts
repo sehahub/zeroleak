@@ -139,7 +139,9 @@ function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
     return;
   }
 
-  const clean = r.counts.critical === 0 && r.counts.warning === 0;
+  // A page nobody could read is not a page with nothing on it, so it cannot
+  // be allowed to end up under a headline that says nothing was found.
+  const clean = r.counts.critical === 0 && r.counts.warning === 0 && r.pagesFailed.length === 0;
   const v = el('div', `verdict ${r.counts.critical ? 'has-critical' : clean ? 'is-clean' : ''}`);
   // The headline number has to be the one the sentence beside it is counting.
   v.append(el('div', 'verdict-score', String(r.counts.critical || r.counts.warning)));
@@ -155,6 +157,15 @@ function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
     clean
       ? 'None of the structural leaks ZeroLeak checks for are present. This does not vouch for the visible content, and text burned into a scanned image is out of reach.'
       : 'Everything below is inside the file you just opened, and travels with it.'));
+  if (r.pagesFailed.length) {
+    const list = r.pagesFailed.slice(0, 12).join(', ');
+    body.append(el('p', 'truncated',
+      `${r.pagesFailed.length} page${r.pagesFailed.length > 1 ? 's' : ''} could not be read `
+      + `(${list}${r.pagesFailed.length > 12 ? ', …' : ''}). Nothing on `
+      + `${r.pagesFailed.length > 1 ? 'them' : 'it'} was checked, so treat this report as covering `
+      + 'the rest of the document only.'));
+  }
+
   if (r.pagesScanned < r.pages) {
     // This has to be impossible to miss: a partial scan that reports "nothing
     // found" would otherwise read as a clean bill of health for the whole file.

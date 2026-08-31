@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { analyzePdf } from '../src/lib/analyze.ts';
+import { stillRecoverable } from './deep-search.mjs';
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -234,9 +235,12 @@ if (file) {
   const after = await analyzePdf(cleanedBytes, pdfjs, { fileName: 'cleaned.pdf' });
   ok(after.counts.critical === 0 && after.counts.warning === 0,
     `the browser-cleaned file scans clean (${after.counts.critical}c/${after.counts.warning}w)`);
-  const raw = Buffer.from(cleanedBytes).toString('latin1');
-  ok(!raw.includes('891-23-4567') && !raw.includes('Jane Doe'),
-    'no secret survives in the browser-cleaned bytes');
+  const survivors = [];
+  for (const secret of ['891-23-4567', 'Jane Doe', 'Kim Min-jun', 'severance_master', 'settlement ceiling']) {
+    if (await stillRecoverable(cleanedBytes, secret)) survivors.push(secret);
+  }
+  ok(survivors.length === 0,
+    `nothing is recoverable from the browser-cleaned file${survivors.length ? ': ' + survivors.join(', ') : ''}`);
 }
 
 // Unticking the destructive option must not produce a report that reads as done.

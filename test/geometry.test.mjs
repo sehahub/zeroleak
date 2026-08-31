@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { analyzePdf, pagesWithHiddenText } from '../src/lib/analyze.ts';
 import { cleanPdf } from '../src/lib/clean.ts';
+import { stillRecoverable } from './deep-search.mjs';
 
 let fail = 0;
 const ok = (c, m) => { console.log((c ? 'PASS  ' : 'FAIL  ') + m); if (!c) fail++; };
@@ -78,9 +79,8 @@ const after = await analyzePdf(cleaned, pdfjs, { fileName: 'cleaned.pdf' });
 ok(after.counts.critical === 0 && after.counts.warning === 0,
   `the cleaned file scans clean (${after.counts.critical}c/${after.counts.warning}w)`);
 
-const raw = Buffer.from(cleaned).toString('latin1');
-ok(!raw.includes('77-2214') && !raw.includes('412,500'),
-  'neither redacted value survives in the bytes');
+ok(!(await stillRecoverable(cleaned, '77-2214')) && !(await stillRecoverable(cleaned, '412,500')),
+  'neither redacted value can be recovered from the cleaned file');
 
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);
