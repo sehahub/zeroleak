@@ -11,6 +11,13 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page"
   },
+  // No "ratelimits" binding here on purpose. It was tried: the binding deployed,
+  // appeared in the bindings list, and limit() returned success for every
+  // request — the ninth against a limit of five included. That is a known open
+  // bug in the feature rather than a misconfiguration, and a guard that always
+  // says yes is worse than none, because it reads as protection. Rate limiting
+  // belongs in a WAF rule on the zone (Security > WAF > Rate limiting rules),
+  // which runs at the edge and stores nothing.
   "d1_databases": [
     {
       "binding": "DB",
