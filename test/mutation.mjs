@@ -176,6 +176,20 @@ const MUTATIONS = [
     into: '        continue;',
   },
   {
+    name: 'the rasterizer hands back a blank page',
+    file: 'src/scripts/cleaner.ts',
+    find: '    await page.render({ canvasContext: ctx, viewport }).promise;',
+    into: '    void page;',
+    suite: 'astro build && node test/raster.test.mjs',
+  },
+  {
+    name: 'the rasterizer renders at a size the page never had',
+    file: 'src/scripts/cleaner.ts',
+    find: "    const viewport = page.getViewport({ scale: 2, rotation: 0 });",
+    into: "    const viewport = page.getViewport({ scale: 0.05, rotation: 90 });",
+    suite: 'astro build && node test/raster.test.mjs',
+  },
+  {
     name: 'the worker writes a column the schema does not declare',
     file: 'src/worker.ts',
     find: "'INSERT INTO subscribers (email, created_at, note, source) VALUES (?, ?, ?, ?) '",
@@ -183,11 +197,11 @@ const MUTATIONS = [
   },
 ];
 
-const SUITE = 'npm run test:unit';
+const DEFAULT_SUITE = 'npm run test:unit';
 
-function run() {
+function run(suite) {
   try {
-    execSync(SUITE, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+    execSync(suite, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
     return true; // suite passed
   } catch {
     return false; // suite failed, which is what a mutation should cause
@@ -213,7 +227,7 @@ for (const [i, m] of MUTATIONS.entries()) {
   writeFileSync(m.file, original.replace(m.find, m.into));
   let caught;
   try {
-    caught = !run();
+    caught = !run(m.suite ?? DEFAULT_SUITE);
   } finally {
     // Always restore from what was read, never from git: the working tree
     // usually holds changes that are not committed yet, and restoring from

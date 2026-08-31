@@ -12,3 +12,4 @@ research/manifest.json
 research/results.json
 HANDOFF.md
 test/fixtures/
+.tmp-raster/
