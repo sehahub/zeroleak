@@ -71,7 +71,7 @@ const faqs = [
   },
   {
     q: 'How large a file can it handle?',
-    a: 'Anything your browser can hold in memory. Documents beyond 60 pages are scanned to that depth by default to keep the tab responsive; the limit is a setting, not a hard constraint.',
+    a: 'Anything your browser can hold in memory. Scanning costs roughly 10 to 30 milliseconds a page, so a 200-page report takes a second or two. Documents beyond 500 pages are scanned to that depth so a pathological file cannot lock the tab; when that happens the report says so plainly, because a partial scan that finds nothing is not a clean bill of health.',
   },
   {
     q: 'What does it cost?',

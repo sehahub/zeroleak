@@ -391,3 +391,10 @@ table.cmp td:first-child { color: var(--ink); font-weight: 550; }
 }
 .signup textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 .signup textarea::placeholder { color: var(--muted); }
+
+.truncated {
+  margin-top: 0.75rem; padding: 0.6rem 0.8rem; font-size: 0.9rem;
+  color: var(--warning); background: var(--warning-bg);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: 8px;
+}

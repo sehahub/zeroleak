@@ -39,7 +39,10 @@ const MARKUP_ANNOTATIONS = new Set([
 ]);
 
 const MAX_EVIDENCE = 25;
-const DEFAULT_PAGE_LIMIT = 60;
+// Measured at roughly 10-30 ms a page, so 500 pages is a few seconds behind a
+// progress bar. The cap exists to stop a pathological document locking the tab,
+// not to save work on ordinary ones.
+const DEFAULT_PAGE_LIMIT = 500;
 
 const clip = (s: string, n = 300) => (s.length > n ? s.slice(0, n) + '…' : s);
 

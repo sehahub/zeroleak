@@ -120,6 +120,37 @@ ok(cleanerOpts.length === 1 && /metadata/i.test(cleanerOpts[0]),
   `and offers only what applies (${JSON.stringify(cleanerOpts)})`);
 await p4.close();
 
+// ---- a document longer than the scan limit -------------------------------
+// A partial scan that finds nothing must not read as a clean bill of health.
+{
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const big = await PDFDocument.create();
+  const f = await big.embedFont(StandardFonts.Helvetica);
+  for (let i = 1; i <= 505; i++) {
+    const pg = big.addPage([612, 792]);
+    pg.drawText(`Page ${i} of the long report`, { x: 60, y: 720, size: 11, font: f });
+    if (i === 1 || i === 502) {
+      pg.drawText(`Withheld on page ${i}: reference 55-${i}`, { x: 60, y: 680, size: 11, font: f });
+      pg.drawRectangle({ x: 56, y: 674, width: 280, height: 17, color: rgb(0, 0, 0) });
+    }
+  }
+  const path = join(BAD, 'long.pdf');
+  await writeFile(path, await big.save());
+
+  const p5 = await browser.newPage();
+  p5.on('pageerror', (e) => errors.push('long: ' + String(e)));
+  await p5.goto(base, { waitUntil: 'networkidle0' });
+  await (await p5.$('#file')).uploadFile(path);
+  await p5.waitForSelector('.verdict', { timeout: 180000 });
+
+  const notice = await p5.$eval('.truncated', (n) => n.textContent).catch(() => '');
+  ok(/first 500 of 505 pages/.test(notice), `a truncated scan says so prominently ("${notice.slice(0, 90)}")`);
+  const body = await p5.$eval('#report', (n) => n.innerText);
+  ok(body.includes('reference 55-1'), 'the redaction inside the scanned range is still reported');
+  ok(!body.includes('reference 55-502'), 'and the one beyond the limit is not claimed to be checked');
+  await p5.close();
+}
+
 // ---- what leaves the browser during a scan -----------------------------
 // The privacy claim is that a counter request carries a bare event name and
 // nothing about the document. That is worth enforcing rather than asserting.

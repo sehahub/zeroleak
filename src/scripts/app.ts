@@ -155,6 +155,14 @@ function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
     clean
       ? 'None of the structural leaks ZeroLeak checks for are present. This does not vouch for the visible content, and text burned into a scanned image is out of reach.'
       : 'Everything below is inside the file you just opened, and travels with it.'));
+  if (r.pagesScanned < r.pages) {
+    // This has to be impossible to miss: a partial scan that reports "nothing
+    // found" would otherwise read as a clean bill of health for the whole file.
+    body.append(el('p', 'truncated',
+      `Only the first ${r.pagesScanned} of ${r.pages} pages were scanned. `
+      + `Nothing on pages ${r.pagesScanned + 1} to ${r.pages} was checked, and cleaning will not touch them.`));
+  }
+
   body.append(el('div', 'verdict-meta',
     `${r.fileName} · ${formatBytes(r.bytes)} · ${r.pages} page${r.pages > 1 ? 's' : ''}` +
     `${r.pagesScanned < r.pages ? ` (scanned first ${r.pagesScanned})` : ''} · ${r.ms} ms · not uploaded`));
