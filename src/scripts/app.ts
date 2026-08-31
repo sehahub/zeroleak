@@ -250,11 +250,9 @@ function wireDropzone() {
   const dz = $('dz');
   const input = $<HTMLInputElement>('file');
 
-  dz.addEventListener('click', () => input.click());
-  dz.addEventListener('keydown', (e) => {
-    const k = (e as KeyboardEvent).key;
-    if (k === 'Enter' || k === ' ') { e.preventDefault(); input.click(); }
-  });
+  // Opening the picker by click or keyboard is the label's job now. Forwarding
+  // it here meant a button wrapping a focusable control, which no screen reader
+  // can announce sensibly.
   input.addEventListener('change', () => {
     const f = input.files?.[0];
     if (f) scan(f);

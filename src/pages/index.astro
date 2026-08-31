@@ -105,16 +105,12 @@ const faqSchema = {
         runs here, in your browser.
       </p>
 
-      <div
-        class="dropzone"
-        id="dz"
-        role="button"
-        tabindex="0"
-        aria-label="Choose a PDF to scan"
-      >
-        <div class="dz-title">Drop a PDF here</div>
-        <div class="dz-sub">or paste one with ⌘V / Ctrl+V</div>
-        <div class="dz-or"><span class="btn">Choose a file</span></div>
+      <div class="dropzone" id="dz">
+        <label class="dz-label" for="file">
+          <span class="dz-title">Drop a PDF here</span>
+          <span class="dz-sub">or paste one with ⌘V / Ctrl+V</span>
+          <span class="dz-or"><span class="btn">Choose a file</span></span>
+        </label>
         <input type="file" id="file" accept="application/pdf,.pdf" class="sr" />
       </div>
       <p class="privacy-note">

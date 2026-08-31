@@ -99,7 +99,7 @@ document id could be matched back to the file it came from.
 npm install
 npm run dev        # local dev server
 npm run build      # static build into dist/
-npm test           # 107 assertions across six suites
+npm test           # 116 assertions across seven suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
 ```
@@ -112,7 +112,8 @@ node --experimental-strip-types test/corpus.mjs scan    # look for false positiv
 node --experimental-strip-types test/corpus.mjs cjk     # Korean and Chinese redactions
 ```
 
-The browser suite needs Chrome or Edge installed; it drives whichever it finds.
+The browser and accessibility suites need Chrome or Edge installed; they drive
+whichever they find. Both read dist/, so npm test builds before running them.
 
 ## Layout
 

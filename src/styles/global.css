@@ -116,17 +116,22 @@ a { color: inherit; }
   border: 1.5px dashed var(--line-strong);
   border-radius: 14px;
   background: var(--surface);
-  padding: clamp(1.5rem, 4vw, 2rem);
   text-align: center;
   transition: border-color 0.12s, background 0.12s;
+}
+/* The label carries the padding so the whole panel is its click target. */
+.dz-label {
+  display: block;
+  padding: clamp(1.5rem, 4vw, 2rem);
   cursor: pointer;
 }
-.dropzone:hover, .dropzone:focus-visible { border-color: var(--ink); outline: none; }
+.dropzone:hover { border-color: var(--ink); }
+.dropzone:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 2px; }
 .dropzone.over { border-color: var(--critical); background: var(--critical-bg); border-style: solid; }
 .dropzone[hidden] { display: none; }
-.dz-title { font-size: 1.08rem; font-weight: 600; }
-.dz-sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; }
-.dz-or { margin-top: 1rem; }
+.dz-title { display: block; font-size: 1.08rem; font-weight: 600; }
+.dz-sub { display: block; color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; }
+.dz-or { display: block; margin-top: 1rem; }
 .btn {
   display: inline-block; font: inherit; font-size: 0.92rem; font-weight: 560;
   background: var(--accent); color: var(--bg);

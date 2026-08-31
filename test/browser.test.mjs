@@ -59,6 +59,25 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(base, { waitUntil: 'networkidle0' });
 ok(await page.$('#dz') !== null, 'landing page renders the dropzone');
 
+// The picker is opened by a real label, so the browser handles click, keyboard
+// and the accessible name. Check the wiring rather than the file dialog.
+const wiring = await page.evaluate(() => {
+  const label = document.querySelector('.dz-label');
+  const input = document.getElementById('file');
+  input.focus();
+  return {
+    labelFor: label?.getAttribute('for'),
+    inputId: input?.id,
+    focusable: document.activeElement === input,
+    labelCoversPanel: label?.getBoundingClientRect().height > 80,
+    noStrayRole: !document.getElementById('dz').hasAttribute('role'),
+  };
+});
+ok(wiring.labelFor === wiring.inputId, 'the label is bound to the file input');
+ok(wiring.focusable, 'the file input can take keyboard focus');
+ok(wiring.labelCoversPanel, 'the label fills the panel, so the whole area opens the picker');
+ok(wiring.noStrayRole, 'the panel is no longer pretending to be a button');
+
 const input = await page.$('#file');
 await input.uploadFile(resolve('test/fixtures/leaky.pdf'));
 
