@@ -49,18 +49,22 @@ that looked perfect and fell apart on real documents:
 | Scans and CAD exports carrying an invisible text layer on purpose | A standing critical alarm on exactly the documents this is for |
 | A label drawn behind a shape and again on top of it | Hidden text, twice per diagram |
 | Highlighter pens using Multiply blending | An opaque cover over readable text |
+| Text set vertically, as Japanese and Chinese often are | Nothing at all — a redaction measured as though it ran to the right |
 
 Each is now pinned by a fixture in `test/make-tricky.mjs`. Across 224 real
 published documents — arXiv, the RFC Editor, the IRS, the SEC, the US
 Government Publishing Office, the UN, the US Courts and 210 UK government
 publications — the scanner produces no false positives.
 
-Non-Latin scripts get their own check, because CID-keyed fonts map glyphs to
-characters differently: `test/corpus.mjs cjk` paints a black box over a line of
-a real Korean and a real Chinese document the way a person would, and asserts
-the text comes back out. It lives with the corpus tooling rather than in the
-unit suite because it needs the fetched documents, and the fonts belong to them
-rather than to this repository.
+Non-Latin scripts get their own checks, because CID-keyed fonts map glyphs to
+characters differently and can run down the page rather than across it.
+`test/corpus.mjs cjk` paints a black box over a line of a real Korean and a real
+Chinese document the way a person would, and asserts the text comes back out; it
+lives with the corpus tooling because it needs the fetched documents, whose
+fonts belong to them rather than to this repository. Vertical writing is covered
+by `test/fixtures/vertical.pdf`, hand-authored around an Identity-V encoding so
+it needs no embedded font at all — pdf.js reports vertical metrics per glyph,
+which is how the writing direction is known without reaching for the font.
 
 ## Cleaning
 
@@ -95,7 +99,7 @@ document id could be matched back to the file it came from.
 npm install
 npm run dev        # local dev server
 npm run build      # static build into dist/
-npm test           # 103 assertions across six suites
+npm test           # 107 assertions across six suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
 ```

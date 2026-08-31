@@ -148,22 +148,48 @@ export function scanOperatorList(
 
   const newline = (tx: number, ty: number) => { tlm = mul([1, 0, 0, 1, tx, ty], tlm); tm = tlm; };
 
+  type Glyph = { width?: number; unicode?: string; isSpace?: boolean; vmetric?: number[] };
+
   const emitText = (glyphs: unknown[], order: number) => {
+    // Japanese and Chinese set vertically as well as horizontally. pdf.js gives
+    // a glyph vertical metrics only in that mode, which is how the direction is
+    // known here without reaching for the font object.
+    const first = glyphs.find((g) => typeof g === 'object' && g !== null) as Glyph | undefined;
+    const vertical = Array.isArray(first?.vmetric);
     let advance = 0;
+    let originX = 0;
     let text = '';
+
     for (const g of glyphs) {
-      if (typeof g === 'number') { advance -= (g / 1000) * s.fontSize * s.hScale; continue; }
-      const gl = g as { width?: number; unicode?: string; isSpace?: boolean };
-      const w = ((gl.width ?? 0) / 1000) * s.fontSize;
-      advance += (w + s.charSpacing + (gl.isSpace ? s.wordSpacing : 0)) * s.hScale;
+      if (typeof g === 'number') {
+        // A kerning adjustment moves along the writing direction, whichever it is.
+        advance -= (g / 1000) * s.fontSize * (vertical ? 1 : s.hScale);
+        continue;
+      }
+      const gl = g as Glyph;
+      if (vertical) {
+        const vm = gl.vmetric ?? [-1000, 500, 880];
+        originX = (vm[1] ?? 500) / 1000 * s.fontSize;
+        advance += (vm[0] ?? -1000) / 1000 * s.fontSize - s.charSpacing;
+      } else {
+        const w = ((gl.width ?? 0) / 1000) * s.fontSize;
+        advance += (w + s.charSpacing + (gl.isSpace ? s.wordSpacing : 0)) * s.hScale;
+      }
       text += gl.unicode ?? '';
     }
+
     if (text.trim()) {
       const trm = mul(tm, s.ctm);
-      const box = transformBox(trm, { x0: 0, y0: -0.16 * s.fontSize, x1: advance, y1: 0.78 * s.fontSize });
-      runs.push({ box, text, invisible: s.render === 3 || s.render === 7, order });
+      // Vertical runs grow downward from the start point and are one glyph wide,
+      // centred on the baseline; horizontal ones grow to the right.
+      const local = vertical
+        ? { x0: -originX, y0: advance, x1: -originX + s.fontSize, y1: 0 }
+        : { x0: 0, y0: -0.16 * s.fontSize, x1: advance, y1: 0.78 * s.fontSize };
+      runs.push({ box: transformBox(trm, local), text, invisible: s.render === 3 || s.render === 7, order });
     }
-    tm = mul([1, 0, 0, 1, advance, 0], tm);
+    tm = vertical
+      ? mul([1, 0, 0, 1, 0, advance], tm)
+      : mul([1, 0, 0, 1, advance, 0], tm);
   };
 
   for (let i = 0; i < fnArray.length; i++) {

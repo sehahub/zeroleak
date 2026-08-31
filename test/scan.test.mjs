@@ -44,5 +44,14 @@ ok(!/must stay visible/.test(hidden), 'an annotation is placed by its Rect, not 
 ok(!hidden.includes('!!!!'), 'punctuation with no letters or digits is not reported as hidden text');
 ok(tricky.covered.length === 1, 'exactly one finding in the tricky document, got ' + tricky.covered.length);
 
+// Text set vertically, as Japanese and Chinese often are. The run grows
+// downward, so a box that covers it is tall and narrow — measuring the run as
+// though it ran to the right misses the redaction completely.
+const vertical = (await scan('test/fixtures/vertical.pdf'))[0];
+const vHidden = vertical.covered.map((c) => c.text).join(' | ');
+ok(vHidden.includes('CONFIDENTIAL'), 'a redaction over vertical text is found');
+ok(!vHidden.includes('VISIBLE'), 'vertical text outside the box is left alone');
+ok(vertical.covered.length === 1, 'exactly one finding in the vertical document, got ' + vertical.covered.length);
+
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);
