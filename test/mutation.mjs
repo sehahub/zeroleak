@@ -122,6 +122,42 @@ const MUTATIONS = [
     into: 'export function parseXmp(raw: string, maxValue = 200): XmpField[] {\n  if (raw) return [];',
   },
   {
+    name: 'a page-level XMP packet is left behind',
+    file: 'src/lib/clean.ts',
+    find: "      hadXmp = deleteFrom(page.node, 'Metadata') || hadXmp;",
+    into: '      hadXmp = hadXmp;',
+  },
+  {
+    name: 'private application data is left behind',
+    file: 'src/lib/clean.ts',
+    find: "      deleteFrom(page.node, 'PieceInfo');",
+    into: '      void page;',
+  },
+  {
+    name: 'the cached thumbnail of the original page is kept',
+    file: 'src/lib/clean.ts',
+    find: "      // A cached rendering of the page as it was before any of this.\n      deleteFrom(page.node, 'Thumb');",
+    into: '      void page;',
+  },
+  {
+    name: 'layer names are kept',
+    file: 'src/lib/clean.ts',
+    find: "        if (group?.has(n('Name'))) group.set(n('Name'), PDFString.of('Layer'));",
+    into: '        void group;',
+  },
+  {
+    name: 'flattening leaves the structure tree, which holds the same words',
+    file: 'src/lib/clean.ts',
+    find: "    const hadStructure = deleteFrom(catalog, 'StructTreeRoot');",
+    into: '    const hadStructure = false;',
+  },
+  {
+    name: 'removing layer names turns the hidden layers back on',
+    file: 'src/lib/clean.ts',
+    find: "    const oc = catalog.lookupMaybe(n('OCProperties'), PDFDict);",
+    into: "    deleteFrom(catalog, 'OCProperties');\n    const oc = catalog.lookupMaybe(n('OCProperties'), PDFDict);",
+  },
+  {
     name: 'the worker writes a column the schema does not declare',
     file: 'src/worker.ts',
     find: "'INSERT INTO subscribers (email, created_at, note, source) VALUES (?, ?, ?, ?) '",
@@ -161,12 +197,15 @@ for (const [i, m] of MUTATIONS.entries()) {
   try {
     caught = !run();
   } finally {
-    if (only === null) writeFileSync(m.file, original);
+    // Always restore from what was read, never from git: the working tree
+    // usually holds changes that are not committed yet, and restoring from
+    // HEAD throws them away. That happened once and cost an hour.
+    writeFileSync(m.file, original);
   }
 
   console.log(`${String(i).padStart(2)}  ${caught ? 'caught ' : 'SURVIVED'} ${m.name}`);
   if (!caught) survivors.push({ ...m, reason: 'suite still passed' });
-  if (only !== null) console.log(`\n(left applied in ${m.file} for inspection — git checkout to restore)`);
+  if (only !== null) console.log('\n' + m.file + " was restored; apply the mutation by hand to inspect it.");
 }
 
 console.log();

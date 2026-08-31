@@ -1,7 +1,7 @@
 // Removes what the scanner found. Like the scanner, this runs wherever it is
 // called — in the browser there is no upload and no server involved.
 import {
-  PDFDocument, PDFName, PDFDict, PDFArray, PDFRef, PDFStream,
+  PDFDocument, PDFName, PDFDict, PDFArray, PDFRef, PDFStream, PDFString,
 } from 'pdf-lib';
 import type { PDFContext, PDFObject } from 'pdf-lib';
 
@@ -79,10 +79,35 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
     const info = doc.getInfoDict();
     const keys = info.keys().map((k) => k.asString());
     for (const k of keys) info.delete(PDFName.of(k.replace(/^\//, '')));
-    const hadXmp = deleteFrom(catalog, 'Metadata');
+    let hadXmp = deleteFrom(catalog, 'Metadata');
     if (ctx.trailerInfo.ID) { delete (ctx.trailerInfo as { ID?: unknown }).ID; }
+
+    // A second XMP packet can hang off any page, and clearing the document's
+    // does not touch it.
+    for (const page of doc.getPages()) {
+      hadXmp = deleteFrom(page.node, 'Metadata') || hadXmp;
+      // A cached rendering of the page as it was before any of this.
+      deleteFrom(page.node, 'Thumb');
+      // Private application data: where an editor keeps an editable original
+      // inside the exported file.
+      deleteFrom(page.node, 'PieceInfo');
+    }
+    deleteFrom(catalog, 'PieceInfo');
+
+    // Layer names describe what a layer holds, which is often who it is for.
+    // The configuration itself has to stay: removing it would switch every
+    // hidden layer back on, revealing exactly what it was hiding.
+    const oc = catalog.lookupMaybe(n('OCProperties'), PDFDict);
+    const groups = oc?.lookupMaybe(n('OCGs'), PDFArray);
+    if (groups) {
+      for (let i = 0; i < groups.size(); i++) {
+        const group = ctx.lookupMaybe(groups.get(i), PDFDict);
+        if (group?.has(n('Name'))) group.set(n('Name'), PDFString.of('Layer'));
+      }
+    }
+
     actions.push(hadXmp
-      ? 'Cleared the document properties and removed the XMP metadata packet'
+      ? 'Cleared the document properties and removed every XMP metadata packet'
       : 'Cleared the document properties');
   }
 
@@ -147,6 +172,8 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
       // are unreachable before the image goes down in their place.
       page.node.delete(n('Contents'));
       page.node.set(n('Resources'), ctx.obj({}));
+      // And the thumbnail, which is a picture of the page as it was.
+      deleteFrom(page.node, 'Thumb');
 
       const img = kind === 'png' ? await doc.embedPng(data) : await doc.embedJpg(data);
       page.drawImage(img, { x: box.x, y: box.y, width: box.width, height: box.height });
@@ -154,6 +181,15 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
     actions.push(flatten.length === 1
       ? `Replaced page ${flatten[0]} with a flat image, destroying the text hidden on it`
       : `Replaced ${flatten.length} pages with flat images, destroying the text hidden on them`);
+
+    // The structure tree carries its own copy of the words, for screen readers,
+    // and nothing about turning a page into a picture disturbs it. Leaving it
+    // would mean the text survived a step whose whole purpose is that it cannot.
+    const hadStructure = deleteFrom(catalog, 'StructTreeRoot');
+    deleteFrom(catalog, 'MarkInfo');
+    if (hadStructure) {
+      actions.push('Removed the structure tree, which held its own copy of the text');
+    }
   }
 
   const dropped = collectGarbage(ctx, [ctx.trailerInfo.Root as PDFRef, ctx.trailerInfo.Info as PDFRef]);
