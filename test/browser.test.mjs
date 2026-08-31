@@ -1,7 +1,7 @@
 // End-to-end smoke test: serves dist/, drives a real browser, drops the leaky
 // fixture into the page and checks the rendered report.
 import { createServer } from 'node:http';
-import { readFile, stat, readdir, mkdir, rm } from 'node:fs/promises';
+import { readFile, writeFile, stat, readdir, mkdir, rm } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
@@ -81,6 +81,44 @@ await page.reload({ waitUntil: 'networkidle0' });
 await (await page.$('#file')).uploadFile(resolve('test/fixtures/leaky.pdf'));
 await page.waitForSelector('.finding', { timeout: 45000 });
 ok(offOrigin.length === 0, `no off-origin requests during a scan${offOrigin.length ? ': ' + offOrigin.join(', ') : ''}`);
+
+// ---- the paths where things go wrong ------------------------------------
+// A report that ends without a way back leaves the reader stuck on a reload,
+// and a second scan must not inherit anything from the first.
+const BAD = resolve('.tmp-downloads');
+await mkdir(BAD, { recursive: true });
+await writeFile(join(BAD, 'notes.txt'), 'this is plainly not a PDF');
+await writeFile(join(BAD, 'truncated.pdf'), (await readFile(resolve('test/fixtures/leaky.pdf'))).subarray(0, 400));
+
+const p4 = await browser.newPage();
+p4.on('pageerror', (e) => errors.push('errors: ' + String(e)));
+await p4.goto(base, { waitUntil: 'networkidle0' });
+
+await (await p4.$('#file')).uploadFile(join(BAD, 'notes.txt'));
+await p4.waitForFunction(() => /not a PDF/.test(document.getElementById('status-text').textContent), { timeout: 20000 });
+ok(await p4.$eval('#dz', (n) => !n.hidden), 'a non-PDF leaves the dropzone in place');
+
+await (await p4.$('#file')).uploadFile(join(BAD, 'truncated.pdf'));
+await p4.waitForFunction(() => /Could not read/.test(document.getElementById('status-text').textContent), { timeout: 45000 });
+ok(await p4.$eval('#dz', (n) => !n.hidden), 'a corrupt PDF brings the dropzone back');
+
+// Two documents in a row: the second report must be about the second file.
+await (await p4.$('#file')).uploadFile(resolve('test/fixtures/leaky.pdf'));
+await p4.waitForSelector('.finding', { timeout: 45000 });
+await p4.$$eval('.verdict-actions button', (bs) => bs.find((b) => /Scan another file/.test(b.textContent)).click());
+await p4.waitForFunction(() => !document.getElementById('dz').hidden, { timeout: 10000 });
+await (await p4.$('#file')).uploadFile(resolve('test/fixtures/clean.pdf'));
+await p4.waitForSelector('.verdict', { timeout: 45000 });
+const second = await p4.$eval('#report', (n) => n.innerText);
+ok(/No hidden content found/.test(second), 'a second scan reports on the second file');
+ok(!/891-23-4567/.test(second), 'nothing from the first scan survives into the second');
+const cleanerHead = await p4.$eval('.cleaner h3', (n) => n.textContent).catch(() => '');
+ok(/Nothing is hidden/.test(cleanerHead),
+  `a file with no leaks still offers to strip its metadata, without claiming something was found ("${cleanerHead}")`);
+const cleanerOpts = await p4.$$eval('.cleaner .opt b', (bs) => bs.map((b) => b.textContent));
+ok(cleanerOpts.length === 1 && /metadata/i.test(cleanerOpts[0]),
+  `and offers only what applies (${JSON.stringify(cleanerOpts)})`);
+await p4.close();
 
 // ---- what leaves the browser during a scan -----------------------------
 // The privacy claim is that a counter request carries a bare event name and

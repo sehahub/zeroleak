@@ -97,7 +97,12 @@ export function renderCleaner(
   if (!applicable.length) return null;
 
   const panel = el('div', 'cleaner');
-  panel.append(el('h3', undefined, 'Remove what was found'));
+  // With nothing hidden, the panel is still worth showing — a file can be free
+  // of leaks and still name its author — but calling that "what was found"
+  // contradicts the verdict directly above it.
+  const nothingHidden = report.counts.critical === 0 && report.counts.warning === 0;
+  panel.append(el('h3', undefined,
+    nothingHidden ? 'Nothing is hidden, but there is still something to strip' : 'Remove what was found'));
   panel.append(el('p', undefined,
     'The cleaning runs in this tab too. Your file is still never uploaded — you get a new copy back, ' +
     'and the original on your disk is not touched.'));

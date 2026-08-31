@@ -104,16 +104,36 @@ type Extras = {
   cleaner: typeof import('./cleaner.ts')['renderCleaner'];
 };
 
+/** Puts the dropzone back. Built before any branch below, because a report
+ *  that ends without one leaves the reader with no way back but a reload. */
+function scanAnotherButton(root: HTMLElement): HTMLElement {
+  const b = el('button', 'btn btn-quiet', 'Scan another file');
+  b.addEventListener('click', () => {
+    root.textContent = '';
+    $('status').hidden = true;
+    $('dz').hidden = false;
+    $('dz').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  return b;
+}
+
 function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
   root.textContent = '';
+  const again = scanAnotherButton(root);
 
   if (r.encrypted && !r.pages) {
     const v = el('div', 'verdict');
     const body = el('div', 'verdict-body');
     body.append(
       el('h2', undefined, 'This document is password-protected'),
-      el('p', 'section-lede', 'ZeroLeak cannot read encrypted files yet, so nothing inside it was scanned.'),
+      el('p', 'section-lede',
+        'ZeroLeak cannot open encrypted files yet, so nothing inside this one was read. '
+        + 'A file that merely restricts printing or copying does open — this message means a '
+        + 'password is needed to view it at all.'),
     );
+    const actions = el('div', 'verdict-actions');
+    actions.append(again);
+    body.append(actions);
     v.append(body);
     root.append(v);
     return;
@@ -148,12 +168,6 @@ function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
     a.download = r.fileName.replace(/\.pdf$/i, '') + '-zeroleak.txt';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  });
-  const again = el('button', 'btn btn-quiet', 'Scan another file');
-  again.addEventListener('click', () => {
-    root.textContent = '';
-    $('dz').hidden = false;
-    $('dz').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   actions.append(dl, again);
   body.append(actions);
