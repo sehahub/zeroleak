@@ -55,7 +55,7 @@ const OPTIONS: OptionSpec[] = [
 /** Renders a page to a JPEG at roughly 144 DPI. */
 function makeRasterizer(pdfjs: any, bytes: Uint8Array): Rasterizer {
   let docPromise: Promise<any> | null = null;
-  const getDoc = () => (docPromise ??= pdfjs.getDocument({ data: new Uint8Array(bytes), verbosity: 0 }).promise);
+  const getDoc = () => (docPromise ??= pdfjs.getDocument({ data: new Uint8Array(bytes), verbosity: 0, isEvalSupported: false }).promise);
 
   return async (pageNumber: number) => {
     const doc = await getDoc();

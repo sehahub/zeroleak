@@ -21,7 +21,12 @@ Three ways to verify that without trusting anyone:
    Both still work.
 2. **Read [`src/worker.ts`](src/worker.ts).** It has three endpoints. None of
    them accepts a file.
-3. **Run the tests.** `test/browser.test.mjs` drives a real browser through a
+3. **Read the response headers.** The site is served with
+   `connect-src 'self'`, so the page cannot reach any other origin — the
+   browser blocks it rather than trusting the code to be correct. The same
+   policy is applied in the test harness, read from the file that deploys it,
+   and the suite fails if the app stops working under it.
+4. **Run the tests.** `test/browser.test.mjs` drives a real browser through a
    scan and asserts that no request leaves the origin, that the only request
    body sent is literally `{"name":"scan"}`, and that nothing the page posts
    mentions the document.

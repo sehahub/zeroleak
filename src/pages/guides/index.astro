@@ -39,12 +39,12 @@ const guides = [
         confidently wrong in ways that get people hurt.
       </p>
 
-      <div class="more" style="margin-top:2.25rem">
+      <div class="more spaced-lg">
         <ul>
           {guides.map((g) => (
-            <li style="margin-top:1.4rem">
-              <a href={g.href} style="font-size:1.06rem">{g.title}</a>
-              <p style="color:var(--muted);font-size:0.93rem;margin-top:0.35rem">{g.note}</p>
+            <li class="roomier">
+              <a class="lead-link" href={g.href}>{g.title}</a>
+              <p class="blurb">{g.note}</p>
             </li>
           ))}
         </ul>

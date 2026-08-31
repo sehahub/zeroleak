@@ -108,14 +108,14 @@ const related = [
       <thead>
         <tr>
           <th>The file still contains</th>
-          <th>Redacted before release<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{redacted.documents} documents</span></th>
-          <th>Ordinary publications<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{ordinary.documents} documents</span></th>
+          <th>Redacted before release<br /><span class="sub">{redacted.documents} documents</span></th>
+          <th>Ordinary publications<br /><span class="sub">{ordinary.documents} documents</span></th>
         </tr>
       </thead>
       <tbody>
         {CHECKS.map(([id, label, note]) => (
           <tr>
-            <td>{label}<br /><span style="font-weight:400;color:var(--muted);font-size:0.88em">{note}</span></td>
+            <td>{label}<br /><span class="note">{note}</span></td>
             <td>{fmt(share(redacted, id))}</td>
             <td>{fmt(share(ordinary, id))}</td>
           </tr>

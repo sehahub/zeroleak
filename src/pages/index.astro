@@ -47,7 +47,7 @@ const checks = [
 const faqs = [
   {
     q: 'Is my file uploaded anywhere?',
-    a: 'No. Scanning and cleaning both run inside your browser tab. Your PDF is never sent to a server, because there is no server-side code to send it to. You can verify this: load the page, disconnect from the network, and use it. It still works. The site keeps three aggregate tallies — a page was viewed, a scan finished, a file was cleaned — with no cookie, no IP address and no third-party analytics. The request that increments a tally carries a single word and no other field, so no property of your document reaches the server: not the file, not its name, not its size, not what was found in it.',
+    a: 'No. Scanning and cleaning both run inside your browser tab. Your PDF is never sent to a server, because there is no server-side code to send it to. You can verify this: load the page, disconnect from the network, and use it. It still works. The page is also served with a content security policy that forbids it from contacting any other origin at all, so the browser blocks a stray request rather than relying on the code being right. The site keeps three aggregate tallies — a page was viewed, a scan finished, a file was cleaned — with no cookie, no IP address and no third-party analytics. The request that increments a tally carries a single word and no other field, so no property of your document reaches the server: not the file, not its name, not its size, not what was found in it.',
   },
   {
     q: 'Why is drawing a black box over text not a redaction?',
@@ -217,6 +217,13 @@ const faqSchema = {
         server-based tool can do.
       </p>
       <p>
+        The browser enforces it as well. This page is served with a content security policy whose
+        <code>connect-src 'self'</code> directive means it <strong>cannot make a network request to
+        any other server</strong> — not to an analytics vendor, not to me, not anywhere. That holds
+        even if my code had a bug or a dependency turned hostile: the browser refuses the request
+        rather than trusting the page. You can read the policy for yourself in the response headers.
+      </p>
+      <p>
         Here is everything this site records, in full. Three tallies go up: <em>a page was
         viewed</em> (with the day and the site you came from), <em>a scan finished</em>, and <em>a
         file was cleaned</em>. No cookie, no IP address, no visitor identifier, no third-party
@@ -270,21 +277,21 @@ const faqSchema = {
         Longer pieces on the problems this tool detects — written mostly because the existing advice
         on these topics is confidently wrong in ways that get people hurt.
       </p>
-      <div class="more" style="margin-top:1.6rem">
+      <div class="more spaced">
         <ul>
-          <li style="margin-top:1.1rem">
+          <li class="roomy">
             <a href="/research/government-pdfs">What 210 published government documents are still carrying</a>
             <span>— we went looking for failed redactions and found something quieter</span>
           </li>
-          <li style="margin-top:1.1rem">
+          <li class="roomy">
             <a href="/guides/redact-a-pdf-properly">How to redact a PDF so the text is actually gone</a>
             <span>— why a black box removes nothing, and the three methods that do</span>
           </li>
-          <li style="margin-top:1.1rem">
+          <li class="roomy">
             <a href="/guides/remove-pdf-metadata">How to remove metadata from a PDF</a>
             <span>— including the second block that most tools leave behind</span>
           </li>
-          <li style="margin-top:1.1rem">
+          <li class="roomy">
             <a href="/guides/hidden-content-in-pdfs">What can hide inside a PDF</a>
             <span>— a field guide to all eight kinds, and how each one gets there</span>
           </li>

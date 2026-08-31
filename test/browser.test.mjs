@@ -3,7 +3,7 @@
 import { createServer } from 'node:http';
 import { readFile, writeFile, stat, readdir, mkdir, rm } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { analyzePdf } from '../src/lib/analyze.ts';
@@ -13,6 +13,12 @@ const MIME = {
   '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml',
   '.map': 'application/json', '.pdf': 'application/pdf',
 };
+
+// The policy the deployed site sends, read from the file that deploys it.
+// A violation then shows up here rather than in production.
+const POLICY = readFileSync('public/_headers', 'utf8')
+  .split('\n').find((l) => l.trim().toLowerCase().startsWith('content-security-policy:'))
+  .split(':').slice(1).join(':').trim();
 
 const ROOT = resolve('dist');
 /** Everything the page posted to its own origin, as the server saw it. */
@@ -31,7 +37,10 @@ const server = createServer(async (req, res) => {
     let p = join(ROOT, decodeURIComponent(url.pathname));
     if ((await stat(p).catch(() => null))?.isDirectory()) p = join(p, 'index.html');
     if (!existsSync(p)) { res.writeHead(404); res.end('nope'); return; }
-    res.writeHead(200, { 'content-type': MIME[extname(p)] ?? 'application/octet-stream' });
+    res.writeHead(200, {
+      'content-type': MIME[extname(p)] ?? 'application/octet-stream',
+      'content-security-policy': POLICY,
+    });
     res.end(await readFile(p));
   } catch (e) {
     res.writeHead(500); res.end(String(e));

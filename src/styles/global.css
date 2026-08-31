@@ -408,3 +408,14 @@ table.cmp td:first-child { color: var(--ink); font-weight: 550; }
   margin-top: 0.75rem; padding-top: 0.65rem; font-size: 0.88rem;
   color: var(--warning); border-top: 1px solid color-mix(in srgb, var(--good) 30%, transparent);
 }
+
+/* Reading lists and the study table. These were inline style attributes until
+   the CSP went in; a strict style-src is worth more than the shortcut. */
+.more.spaced { margin-top: 1.6rem; }
+.more.spaced-lg { margin-top: 2.25rem; }
+.more li.roomy { margin-top: 1.1rem; }
+.more li.roomier { margin-top: 1.4rem; }
+.more a.lead-link { font-size: 1.06rem; }
+.more p.blurb { color: var(--muted); font-size: 0.93rem; margin-top: 0.35rem; }
+table.cmp th .sub { font-weight: 400; text-transform: none; letter-spacing: 0; }
+table.cmp td .note { font-weight: 400; color: var(--muted); font-size: 0.88em; }
