@@ -6,6 +6,7 @@
 //   node --experimental-strip-types test/corpus.mjs fetch
 //   node --experimental-strip-types test/corpus.mjs scan
 import { writeFile, mkdir, readdir, readFile, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { analyzePdf } from '../src/lib/analyze.ts';
@@ -37,6 +38,11 @@ const SOURCES = [
   ['sec-filing.pdf', 'https://www.sec.gov/files/form10-k.pdf'],
   ['irs-form1040.pdf', 'https://www.irs.gov/pub/irs-pdf/f1040.pdf'],
   ['irs-pub17.pdf', 'https://www.irs.gov/pub/irs-pdf/p17.pdf'],
+  // Non-Latin scripts: the glyph-to-unicode mapping and the advance widths
+  // behave differently for CID-keyed fonts, and nothing else here exercises that.
+  ['irs-korean.pdf', 'https://www.irs.gov/pub/irs-pdf/p1ko.pdf'],
+  ['irs-chinese.pdf', 'https://www.irs.gov/pub/irs-pdf/p1zhs.pdf'],
+  ['irs-spanish.pdf', 'https://www.irs.gov/pub/irs-pdf/p17sp.pdf'],
   // PDF specification and conformance material
   ['pdf-association-sample.pdf', 'https://pdfa.org/wp-content/uploads/2019/09/PDF20ExamplesSummary.pdf'],
   ['adobe-pdf17-extension.pdf', 'https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdfs/adobe_supplement_iso32000.pdf'],
@@ -108,6 +114,47 @@ async function scanAll() {
   console.log(`\n${rows.length} files, ${errors.length} failed to parse`);
 }
 
+/** Takes a real Korean document, paints a black box over a line of its text the
+ *  way a person would, and checks the scanner gets the Korean back. Extraction
+ *  working is only half the question; catching a redaction is the other half.
+ *  Kept here rather than in the unit suite because it needs the fetched corpus,
+ *  and the font belongs to the source document rather than to this repository. */
+async function cjkRedaction() {
+  const { PDFDocument, rgb } = await import('pdf-lib');
+  for (const [name, label] of [['irs-korean.pdf', 'Korean'], ['irs-chinese.pdf', 'Chinese']]) {
+    const path = join(DIR, name);
+    if (!existsSync(path)) { console.log(`${label}: ${name} not fetched, skipping`); continue; }
+    const original = new Uint8Array(await readFile(path));
+
+    // Find a line of text on page 1 and note where it sits.
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(original), verbosity: 0 }).promise;
+    const page = await doc.getPage(1);
+    const items = (await page.getTextContent()).items.filter((i) => (i.str ?? '').trim().length > 6);
+    const target = items[Math.floor(items.length / 2)];
+    const [x, y] = [target.transform[4], target.transform[5]];
+
+    // Paint over it, exactly as somebody would with a drawing tool.
+    const lib = await PDFDocument.load(original, { updateMetadata: false });
+    lib.getPage(0).drawRectangle({
+      x: x - 2, y: y - target.height * 0.25,
+      width: target.width + 4, height: target.height * 1.35,
+      color: rgb(0, 0, 0),
+    });
+    const covered = new Uint8Array(await lib.save());
+    await writeFile(join(DIR, `redacted-${name}`), covered);
+
+    const r = await analyzePdf(covered, pdfjs, { fileName: name });
+    const hidden = r.findings.find((f) => f.id === 'hidden-text');
+    const recovered = hidden ? hidden.evidence.map((e) => e.value).join(' ') : '';
+    const wanted = target.str.trim();
+    const found = recovered.includes(wanted.slice(0, Math.min(8, wanted.length)));
+    console.log(`${label.padEnd(8)} covered ${JSON.stringify(wanted.slice(0, 24))}`);
+    console.log(`         -> ${found ? 'RECOVERED' : 'MISSED'}  ${hidden ? hidden.evidence.length + ' run(s)' : 'no hidden-text finding'}`);
+    if (hidden) console.log(`         -> ${JSON.stringify(recovered.slice(0, 60))}`);
+  }
+}
+
 const cmd = process.argv[2] ?? 'scan';
 if (cmd === 'fetch') await fetchAll();
+else if (cmd === 'cjk') await cjkRedaction();
 else await scanAll();

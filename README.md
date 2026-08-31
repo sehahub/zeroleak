@@ -50,8 +50,17 @@ that looked perfect and fell apart on real documents:
 | A label drawn behind a shape and again on top of it | Hidden text, twice per diagram |
 | Highlighter pens using Multiply blending | An opaque cover over readable text |
 
-Each is now pinned by a fixture in `test/make-tricky.mjs`. Across 221 real
-published documents the scanner produces no false positives.
+Each is now pinned by a fixture in `test/make-tricky.mjs`. Across 224 real
+published documents — arXiv, the RFC Editor, the IRS, the SEC, the US
+Government Publishing Office, the UN, the US Courts and 210 UK government
+publications — the scanner produces no false positives.
+
+Non-Latin scripts get their own check, because CID-keyed fonts map glyphs to
+characters differently: `test/corpus.mjs cjk` paints a black box over a line of
+a real Korean and a real Chinese document the way a person would, and asserts
+the text comes back out. It lives with the corpus tooling rather than in the
+unit suite because it needs the fetched documents, and the fonts belong to them
+rather than to this repository.
 
 ## Cleaning
 
@@ -89,6 +98,14 @@ npm run build      # static build into dist/
 npm test           # 103 assertions across six suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
+```
+
+The corpus tooling is separate and needs the network:
+
+```sh
+node --experimental-strip-types test/corpus.mjs fetch   # a diverse sample
+node --experimental-strip-types test/corpus.mjs scan    # look for false positives
+node --experimental-strip-types test/corpus.mjs cjk     # Korean and Chinese redactions
 ```
 
 The browser suite needs Chrome or Edge installed; it drives whichever it finds.
