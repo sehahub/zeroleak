@@ -58,6 +58,7 @@ that looked perfect and fell apart on real documents:
 | A black bar drawn as a stretched one-pixel image mask | Nothing — only filled rectangles counted as covers |
 | Text painted with a fully transparent fill, or clipped to a point | Nothing, though neither appears on the page |
 | Text set vertically, as Japanese and Chinese often are | Nothing at all — a redaction measured as though it ran to the right |
+| A bar blacked over part of a scan, where the words are pixels | Nothing — there was no text run to notice |
 
 Each is now pinned by a fixture in `test/make-tricky.mjs`. Across 224 real
 published documents — arXiv, the RFC Editor, the IRS, the SEC, the US
@@ -107,7 +108,7 @@ document id could be matched back to the file it came from.
 npm install
 npm run dev        # local dev server
 npm run build      # static build into dist/
-npm test           # 171 assertions across eleven suites
+npm test           # 178 assertions across eleven suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
 ```
@@ -131,7 +132,7 @@ Every serious bug in this project was found by assuming the checks were lying.
 An outside review gutted the cleaner to a no-op and watched eight assertions
 pass. `npm run mutation` automates that move: it deletes one behaviour at a
 time — the attachment removal, paint order, the form matrix, vertical metrics,
-the structure tree, and twenty-five others — and fails if the suite still goes
+the structure tree, and twenty-seven others — and fails if the suite still goes
 green. A behaviour that can be removed without a test failing is not tested.
 
 ```sh
@@ -142,7 +143,7 @@ Every serious bug in this project was found by assuming the checks were lying.
 An outside review gutted the cleaner to a no-op and watched eight assertions
 pass. `npm run mutation` automates that move: it deletes one behaviour at a
 time — the attachment removal, paint order, the form matrix, vertical metrics,
-the structure tree, and twenty-five others — and fails if the suite still goes
+the structure tree, and twenty-seven others — and fails if the suite still goes
 green. A behaviour that can be removed without a test failing is not tested.
 
 ## Layout

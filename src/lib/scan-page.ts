@@ -16,11 +16,26 @@ export type PageScan = {
   covered: { text: string; color: string; box: Box }[];
   invisible: string[];
   offPage: string[];
+  /** Solid dark shapes sitting on a picture. Blacking out a face or a signature
+   *  on a scan is the same act as blacking out text, and leaves the pixels
+   *  underneath just as intact — but there is no text run to notice. */
+  coveredImage: { color: string; area: number }[];
   runs: number;
   /** Invisible text lying over a picture: an OCR layer doing its job, rather
    *  than a paragraph somebody hid. */
   ocr: string[];
 };
+
+/** The colour a redaction bar is drawn in: black, or close enough to it.
+ *  Judging by brightness alone was not enough — a saturated brand red is dark
+ *  by that measure, and a colour panel over a cover photograph is the most
+ *  ordinary thing in a published report. Every channel has to be low. */
+function isRedactionBlack(color: string): boolean {
+  const m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!m) return false;
+  const v = parseInt(m[1], 16);
+  return Math.max((v >> 16) & 255, (v >> 8) & 255, v & 255) < 60;
+}
 
 /** Only Normal compositing actually hides what is beneath. Highlighter pens
  *  use Multiply, which leaves the text readable. */
@@ -167,7 +182,7 @@ export function scanOperatorList(
   let tm: Matrix = IDENTITY;
   let tlm: Matrix = IDENTITY;
   let pendingClip = false;
-  const images: Box[] = [];
+  const images: (Box & { order: number })[] = [];
   const annotDepth: number[] = [];
   const formDepth: number[] = [];
 
@@ -210,10 +225,19 @@ export function scanOperatorList(
       const local = vertical
         ? { x0: -originX, y0: advance, x1: -originX + s.fontSize, y1: 0 }
         : { x0: 0, y0: -0.16 * s.fontSize, x1: advance, y1: 0.78 * s.fontSize };
-      // Rendering mode 3 is the documented way to draw nothing. Painting with a
-      // transparent fill has the same effect on screen and left the text just
-      // as copyable, so it belongs in the same bucket.
-      const unpainted = s.render === 3 || s.render === 7 || s.alpha < 0.05;
+      // Rendering mode 3 is the documented way to draw nothing, and that is what
+      // is reported here.
+      //
+      // A transparent fill has the same effect on screen, and a review pointed
+      // out it was going unreported. Acting on it turned out to cost far more
+      // than it caught: design tools convert headings to outlines and lay the
+      // same words over them as ca-0 text so the page stays searchable, and two
+      // ordinary government report covers produced 313 claims about words
+      // printed in plain sight. No real document in the sample hid anything
+      // this way. Left as a known limitation rather than a finding nobody can
+      // trust — test/fixtures/evasion.pdf keeps a page of it for whoever finds
+      // a way to tell the two apart.
+      const unpainted = s.render === 3 || s.render === 7;
       runs.push({ box: transformBox(trm, local), text, invisible: unpainted, order, clip: s.clip });
     }
     tm = vertical
@@ -349,7 +373,7 @@ export function scanOperatorList(
         if (s.alpha < 0.85 || !isOpaqueBlend(s.blend)) break;
         const box = intersect(transformBox(s.ctm, { x0: 0, y0: 0, x1: 1, y1: 1 }), s.clip);
         if (area(box) <= 0) break;
-        images.push(box);
+        images.push({ ...box, order: i });
         // A picture spanning most of the page is a scan or a background, not a
         // redaction patch. Treating it as a cover would flag every scanned page.
         if (pageArea > 0 && area(box) > 0.6 * pageArea) break;
@@ -357,6 +381,28 @@ export function scanOperatorList(
         break;
       }
       default: break;
+    }
+  }
+
+  // A dark, opaque shape that lands inside a picture and covers a modest part
+  // of it. The bounds are there to keep ordinary design out: a caption bar
+  // spanning a hero image, or a logo plate, is not this shape.
+  const coveredImage: PageScan['coveredImage'] = [];
+  for (const image of images) {
+    const imgArea = area(image);
+    if (imgArea <= 0) continue;
+    for (const cover of covers) {
+      if (cover.kind !== 'fill' || cover.order < image.order) continue;
+      if (!isRedactionBlack(cover.color)) continue;
+      const box = intersect(cover.box, image);
+      const covered = area(box);
+      if (covered <= 0) continue;
+      // Almost entirely within the picture, and a patch of it rather than a
+      // wash over the whole thing.
+      if (covered / area(cover.box) < 0.9) continue;
+      const share = covered / imgArea;
+      if (share < 0.0005 || share > 0.5) continue;
+      coveredImage.push({ color: cover.color, area: covered });
     }
   }
 
@@ -415,5 +461,5 @@ export function scanOperatorList(
     invisible.length = 0;
   }
 
-  return { covered, invisible, ocr, offPage, runs: runs.length };
+  return { covered, invisible, ocr, offPage, coveredImage, runs: runs.length };
 }

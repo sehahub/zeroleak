@@ -122,5 +122,30 @@ const ctx = doc.context;
   page.drawRectangle({ x: 56, y: 694, width: 240, height: 18, color: rgb(0, 0, 0) });
 }
 
+// (8) A scan with a name blacked out. There is no text object anywhere on this
+//     page — the words are pixels — so nothing about covered text applies, and
+//     the picture underneath the bar is untouched.
+{
+  const page = doc.addPage([612, 792]);
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+  const scan = await doc.embedPng(png);
+  page.drawImage(scan, { x: 0, y: 0, width: 612, height: 792 });
+  page.drawRectangle({ x: 80, y: 600, width: 260, height: 22, color: rgb(0, 0, 0) });
+}
+
+// (9) CONTROL. A brand-coloured panel over a cover photograph, which is what
+//     the front of every published report looks like.
+{
+  const page = doc.addPage([612, 792]);
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+  const photo = await doc.embedPng(png);
+  page.drawImage(photo, { x: 0, y: 300, width: 612, height: 492 });
+  page.drawRectangle({ x: 40, y: 380, width: 420, height: 260, color: rgb(0.81, 0.06, 0.17) });
+}
+
 writeFileSync('test/fixtures/evasion.pdf', await doc.save({ useObjectStreams: false }));
-console.log('wrote test/fixtures/evasion.pdf (7 pages)');
+console.log('wrote test/fixtures/evasion.pdf (9 pages)');

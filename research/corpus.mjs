@@ -184,11 +184,9 @@ async function report() {
   if (!existsSync(RESULTS)) {
     console.log(`No scan results here yet. ${RESULTS} is deliberately not committed:`);
     console.log('the per-document rows could be matched back to the files they came from,');
-    console.log('and the study promises not to name them. Build your own sample first:
-');
+    console.log('and the study promises not to name them. Build your own sample first:');
     console.log('  node --experimental-strip-types research/corpus.mjs fetch');
-    console.log('  node --experimental-strip-types research/corpus.mjs scan
-');
+    console.log('  node --experimental-strip-types research/corpus.mjs scan');
     console.log(`The published aggregate is in ${SUMMARY}.`);
     return;
   }

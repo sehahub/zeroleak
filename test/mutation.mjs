@@ -92,12 +92,6 @@ const MUTATIONS = [
     into: '    const vertical = false && Array.isArray(first?.vmetric);',
   },
   {
-    name: 'text painted with a transparent fill is treated as visible',
-    file: 'src/lib/scan-page.ts',
-    find: 's.render === 3 || s.render === 7 || s.alpha < 0.05',
-    into: 's.render === 3 || s.render === 7',
-  },
-  {
     name: 'text clipped down to nothing is treated as visible',
     file: 'src/lib/scan-page.ts',
     find: '    if (clippedAway(r)) {',
@@ -188,6 +182,18 @@ const MUTATIONS = [
     find: "    const viewport = page.getViewport({ scale: 2, rotation: 0 });",
     into: "    const viewport = page.getViewport({ scale: 0.05, rotation: 90 });",
     suite: 'astro build && node test/raster.test.mjs',
+  },
+  {
+    name: 'a black bar over a picture stops counting',
+    file: 'src/lib/scan-page.ts',
+    find: '      if (!isRedactionBlack(cover.color)) continue;',
+    into: '      continue;',
+  },
+  {
+    name: 'any dark colour over a picture counts, brand panels included',
+    file: 'src/lib/scan-page.ts',
+    find: '  return Math.max((v >> 16) & 255, (v >> 8) & 255, v & 255) < 60;',
+    into: '  return (0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255)) / 255 < 0.35;',
   },
   {
     name: 'the worker writes a column the schema does not declare',

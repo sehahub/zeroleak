@@ -12,10 +12,11 @@
     "metadata-software": 118,
     "prior-revisions": 32,
     "external-links": 74,
-    "off-page-text": 3,
+    "covered-image": 1,
     "attachments": 2,
     "annotations": 1,
     "ocr-layer": 2,
+    "off-page-text": 2,
     "hidden-text": 0
    }
   },
@@ -29,10 +30,11 @@
     "metadata-software": 79,
     "prior-revisions": 41,
     "external-links": 57,
-    "off-page-text": 3,
+    "covered-image": 0,
     "attachments": 3,
     "annotations": 0,
     "ocr-layer": 1,
+    "off-page-text": 4,
     "hidden-text": 1
    }
   },
@@ -46,10 +48,11 @@
     "metadata-software": 197,
     "prior-revisions": 73,
     "external-links": 131,
-    "off-page-text": 6,
+    "covered-image": 1,
     "attachments": 5,
     "annotations": 1,
     "ocr-layer": 3,
+    "off-page-text": 6,
     "hidden-text": 1
    }
   }

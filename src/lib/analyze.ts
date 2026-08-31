@@ -99,7 +99,7 @@ export function countRevisions(bytes: Uint8Array): number {
 /** Pages carrying text that is in the file but not on the page. Only these
  *  need the destructive flattening pass; every other page is left alone. */
 export function pagesWithHiddenText(report: Report): number[] {
-  const ids = new Set(['hidden-text', 'invisible-text', 'off-page-text']);
+  const ids = new Set(['hidden-text', 'covered-image', 'invisible-text', 'off-page-text']);
   const pages = new Set<number>();
   for (const f of report.findings) {
     if (!ids.has(f.id)) continue;
@@ -289,6 +289,7 @@ export async function analyzePdf(
 
   const pagesFailed: number[] = [];
   const covered: Evidence[] = [];
+  const coveredImage: Evidence[] = [];
   const invisible: Evidence[] = [];
   const ocr: Evidence[] = [];
   const offPage: Evidence[] = [];
@@ -312,6 +313,9 @@ export async function analyzePdf(
       const ol = await page.getOperatorList();
       const scan = scanOperatorList(ol.fnArray, ol.argsArray, page.view, pdfjs.OPS);
       for (const c of scan.covered) covered.push({ page: p, label: c.color, value: clip(c.text) });
+      for (const c of scan.coveredImage) {
+        coveredImage.push({ page: p, label: c.color, value: `${Math.round(c.area)} square points of picture` });
+      }
       for (const t of scan.invisible) invisible.push({ page: p, value: clip(t) });
       for (const t of scan.ocr) ocr.push({ page: p, value: clip(t) });
       for (const t of scan.offPage) offPage.push({ page: p, value: clip(t) });
@@ -346,6 +350,17 @@ export async function analyzePdf(
       why: 'This is the failure behind almost every published redaction scandal. Selecting the blacked-out area and copying it returns the original words — no special tooling required. The recovered text is shown below.',
       fix: 'Delete the underlying text, then re-draw the box. Covering is not redacting.',
       evidence: covered,
+    }));
+  }
+
+  if (coveredImage.length) {
+    findings.push(makeFinding({
+      id: 'covered-image', severity: 'critical',
+      title: `${coveredImage.length} solid shape${coveredImage.length > 1 ? 's are' : ' is'} painted over part of a picture`,
+      what: 'A dark rectangle sits on top of an image. The image itself is unchanged underneath it.',
+      why: 'This is the same failure as a box over text, and on a scanned document it is the more likely one: the name, the signature or the face is still in the picture, and deleting the rectangle brings it back. Nothing has to be decoded — the original image is a separate object in the file.',
+      fix: 'The picture itself has to be edited, or the page replaced with a flat rendering of what is actually visible.',
+      evidence: coveredImage,
     }));
   }
 
@@ -418,7 +433,7 @@ export async function analyzePdf(
   // Within a severity, lead with the finding a reader can act on most directly.
   const sevOrder: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
   const idOrder = [
-    'hidden-text', 'invisible-text', 'prior-revisions', 'attachments', 'javascript',
+    'hidden-text', 'covered-image', 'invisible-text', 'prior-revisions', 'attachments', 'javascript',
     'annotations', 'form-values', 'metadata-identity', 'xmp', 'hidden-layers',
     'off-page-text', 'ocr-layer', 'external-links', 'metadata-software',
   ];

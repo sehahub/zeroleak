@@ -23,7 +23,13 @@ ok(hidden.includes('FORM-PLACED'), 'text placed by a form XObject matrix is meas
 ok(hidden.includes('STATE-LEAK'), 'a transparent fill left behind by a form does not excuse the box after it');
 ok(hidden.includes('MASK-BAR'), 'a bar drawn as a stretched image mask counts as a cover');
 ok(hidden.includes('EMPTY-PATH'), 'a paint operator with no path does not cost the rest of the page');
-ok(invisible.includes('ALPHA-ZERO'), 'text painted with a transparent fill is reported as unpainted');
+// Known limitation, held here on purpose. Reporting transparent-fill text was
+// tried and withdrawn: design tools lay the same words over outlined headings
+// that way, and two ordinary report covers produced 313 claims about text
+// printed in plain sight. If someone finds a way to tell those apart, this
+// assertion is where the case is waiting.
+ok(!invisible.includes('ALPHA-ZERO'),
+  'text painted with a transparent fill is not reported (known limitation, see the comment)');
 ok(offPage.includes('CLIPPED-AWAY'), 'text clipped down to nothing is reported like text off the page');
 
 // Controls: fixing the above must not be achieved by flagging everything.
@@ -32,12 +38,18 @@ ok(!everything.includes('plainly visible'),
 ok(!everything.includes('Page 1 heading') && !everything.includes('Visible line'),
   'ordinary visible text on those pages stays unreported');
 
+const onImage = report.findings.find((f) => f.id === 'covered-image');
+ok(onImage && onImage.pages.includes(8),
+  `a bar blacking out part of a scan is reported (${onImage ? 'pages ' + onImage.pages.join(', ') : 'not reported'})`);
+ok(!onImage || !onImage.pages.includes(9),
+  'a brand-coloured panel over a cover photograph is not');
+
 ok(report.pagesFailed.length === 0,
   `every page was readable (${report.pagesFailed.join(', ') || 'none failed'})`);
 
 // The secrets are the point: cleaning has to make all of them unrecoverable.
 const pages = pagesWithHiddenText(report);
-ok(pages.length >= 6, `all the affected pages are queued for cleaning (${pages.join(', ')})`);
+ok(pages.length >= 5, `every page the scanner reported is queued for cleaning (${pages.join(', ')})`);
 
 const STUB_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -47,11 +59,16 @@ const { bytes: cleaned } = await cleanPdf(bytes, {
   flattenPages: pages, rasterize: async () => ({ data: new Uint8Array(STUB_PNG), kind: 'png' }),
 });
 
-const markers = ['FORM-PLACED', 'STATE-LEAK', 'MASK-BAR', 'EMPTY-PATH', 'ALPHA-ZERO', 'CLIPPED-AWAY'];
+const markers = ['FORM-PLACED', 'STATE-LEAK', 'MASK-BAR', 'EMPTY-PATH', 'CLIPPED-AWAY'];
 const survivors = [];
 for (const m of markers) if (await stillRecoverable(cleaned, m)) survivors.push(m);
 ok(survivors.length === 0,
-  `nothing is recoverable from the cleaned file${survivors.length ? ': ' + survivors.join(', ') : ''}`);
+  `nothing the scanner reported is recoverable from the cleaned file${survivors.length ? ': ' + survivors.join(', ') : ''}`);
+
+// Stated rather than hidden: what the scanner does not report, the cleaner does
+// not remove, and the transparent-fill page is the one case of that here.
+ok(await stillRecoverable(cleaned, 'ALPHA-ZERO'),
+  'the transparent-fill page is not cleaned either, because it is not reported');
 
 const after = await analyzePdf(cleaned, pdfjs, { fileName: 'cleaned.pdf' });
 ok(after.counts.critical === 0, `the cleaned file scans clean (${after.counts.critical} critical)`);

@@ -8,6 +8,11 @@ const checks = [
     body: 'A black rectangle drawn over a name hides nothing. ZeroLeak reads the paint order, finds live text sitting beneath an opaque shape, and shows you the words it recovered.',
   },
   {
+    title: 'A bar blacked over part of a picture',
+    sev: 'critical',
+    body: 'On a scan there is no text to cover — the words are pixels. Painting a black rectangle over them hides nothing: the picture underneath is a separate object, and deleting the rectangle brings the name back.',
+  },
+  {
     title: 'Invisible text',
     sev: 'critical',
     body: 'Text can be written in a rendering mode that draws nothing at all. It stays fully searchable and copyable. Legitimate for scanned OCR, alarming everywhere else.',
@@ -130,7 +135,7 @@ const faqSchema = {
     <div class="wrap">
       <h2>What ZeroLeak looks for</h2>
       <p class="section-lede">
-        Eight classes of content that are present in a PDF but absent from the page you see.
+        Nine classes of content that are present in a PDF but absent from the page you see.
       </p>
       <div class="grid">
         {checks.map((c) => (
