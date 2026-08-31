@@ -148,6 +148,32 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
     had = deleteFrom(catalog, 'AA') || had;
     for (const page of doc.getPages()) {
       had = deleteFrom(page.node, 'AA') || had;
+
+      // An annotation can carry its own script, on a click or a keystroke.
+      // Those are not "run when opened", but somebody who asked for the scripts
+      // to go does not mean everywhere except here. The annotation itself
+      // stays; only the code attached to it goes.
+      const annots = page.node.lookupMaybe(n('Annots'), PDFArray);
+      for (let i = 0; annots && i < annots.size(); i++) {
+        const annot = ctx.lookupMaybe(annots.get(i), PDFDict);
+        if (!annot) continue;
+
+        const action = annot.lookupMaybe(n('A'), PDFDict);
+        if (action && String(action.get(n('S'))) === '/JavaScript') {
+          had = deleteFrom(annot, 'A') || had;
+        }
+
+        const extra = annot.lookupMaybe(n('AA'), PDFDict);
+        if (!extra) continue;
+        for (const key of extra.keys()) {
+          const entry = extra.lookupMaybe(key, PDFDict);
+          if (entry && String(entry.get(n('S'))) === '/JavaScript') {
+            extra.delete(key);
+            had = true;
+          }
+        }
+        if (extra.keys().length === 0) deleteFrom(annot, 'AA');
+      }
     }
     if (had) actions.push('Removed document scripts and open actions');
   }
@@ -162,10 +188,25 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
   }
 
   const flatten = opts.flattenPages ?? [];
+  if (flatten.length && !opts.rasterize) {
+    // Silently skipping this returned a file that had not been cleaned, to a
+    // caller with no way to tell. Refusing is the only honest option.
+    throw new Error('pages were listed for flattening but no rasterizer was supplied');
+  }
   if (flatten.length && opts.rasterize) {
     for (const num of flatten) {
       const page = doc.getPage(num - 1);
-      const box = page.getCropBox();
+      // A crop box may be written from any corner. Taken as given, a box
+      // recorded the other way round becomes a negative width and height, and
+      // the replacement image lands mirrored somewhere off the page — over a
+      // page whose own content has already been deleted.
+      const raw = page.getCropBox();
+      const box = {
+        x: Math.min(raw.x, raw.x + raw.width),
+        y: Math.min(raw.y, raw.y + raw.height),
+        width: Math.abs(raw.width),
+        height: Math.abs(raw.height),
+      };
       const { data, kind } = await opts.rasterize(num);
 
       // Drop the page's own content and resources first, so the text objects

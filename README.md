@@ -107,7 +107,7 @@ document id could be matched back to the file it came from.
 npm install
 npm run dev        # local dev server
 npm run build      # static build into dist/
-npm test           # 140 assertions across nine suites
+npm test           # 165 assertions across ten suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
 ```
@@ -122,6 +122,17 @@ node --experimental-strip-types test/corpus.mjs cjk     # Korean and Chinese red
 
 The browser and accessibility suites need Chrome or Edge installed; they drive
 whichever they find. Both read dist/, so npm test builds before running them.
+
+```sh
+npm run mutation    # remove one guarantee at a time, require the suite to notice
+```
+
+Every serious bug in this project was found by assuming the checks were lying.
+An outside review gutted the cleaner to a no-op and watched eight assertions
+pass. `npm run mutation` automates that move: it deletes one behaviour at a
+time — the attachment removal, paint order, the form matrix, vertical metrics,
+the structure tree, and twenty-three others — and fails if the suite still goes
+green. A behaviour that can be removed without a test failing is not tested.
 
 ## Layout
 

@@ -158,6 +158,24 @@ const MUTATIONS = [
     into: "    deleteFrom(catalog, 'OCProperties');\n    const oc = catalog.lookupMaybe(n('OCProperties'), PDFDict);",
   },
   {
+    name: 'flattening without a rasterizer goes back to being skipped silently',
+    file: 'src/lib/clean.ts',
+    find: "    throw new Error('pages were listed for flattening but no rasterizer was supplied');",
+    into: '    void flatten;',
+  },
+  {
+    name: 'the crop box is taken as written, negative sizes and all',
+    file: 'src/lib/clean.ts',
+    find: '        width: Math.abs(raw.width),\n        height: Math.abs(raw.height),',
+    into: '        width: raw.width,\n        height: raw.height,',
+  },
+  {
+    name: 'scripts attached to annotations are left in place',
+    file: 'src/lib/clean.ts',
+    find: "        const action = annot.lookupMaybe(n('A'), PDFDict);",
+    into: '        continue;',
+  },
+  {
     name: 'the worker writes a column the schema does not declare',
     file: 'src/worker.ts',
     find: "'INSERT INTO subscribers (email, created_at, note, source) VALUES (?, ?, ?, ?) '",

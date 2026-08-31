@@ -28,5 +28,14 @@ cropped.node.set(
   doc.context.obj([100, 500, 500, 700]),
 );
 
+// (3) A crop box recorded from the opposite corner. Taken at face value this
+//     becomes a negative width and height, and the replacement image lands
+//     mirrored somewhere off the page — over content already deleted.
+const flipped = doc.addPage([612, 792]);
+flipped.drawText('FLIPPED PAGE — this line must stay readable', { x: 150, y: 640, size: 12, font });
+flipped.drawText('Reference 55-9001 withheld from disclosure', { x: 150, y: 600, size: 12, font });
+flipped.drawRectangle({ x: 146, y: 594, width: 300, height: 18, color: rgb(0, 0, 0) });
+flipped.node.set(PDFName.of('CropBox'), doc.context.obj([500, 700, 100, 500]));
+
 writeFileSync('test/fixtures/geometry.pdf', await doc.save({ useObjectStreams: false }));
 console.log('wrote test/fixtures/geometry.pdf');

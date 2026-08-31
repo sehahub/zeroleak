@@ -75,6 +75,14 @@ ok(p2.image && near(p2.image.x, 100) && near(p2.image.y, 500)
 ok(near(p2.view[0], 100) && near(p2.view[2], 500), 'the crop box itself is left alone');
 ok(p2.textRuns === 0, 'no text object survives on the cropped page');
 
+const p3 = await placement(doc, 3);
+ok(p3.image && p3.image.w > 0 && p3.image.h > 0,
+  `a crop box written from the far corner does not become a negative size (${JSON.stringify(p3.image)})`);
+ok(p3.image && near(p3.image.x, 100) && near(p3.image.y, 500)
+  && near(p3.image.w, 400) && near(p3.image.h, 200),
+  'and the picture still lands on the visible area');
+ok(p3.textRuns === 0, 'no text object survives on the flipped page');
+
 const after = await analyzePdf(cleaned, pdfjs, { fileName: 'cleaned.pdf' });
 ok(after.counts.critical === 0 && after.counts.warning === 0,
   `the cleaned file scans clean (${after.counts.critical}c/${after.counts.warning}w)`);

@@ -105,5 +105,47 @@ ok(!(await stillRecoverable(t.bytes, '8842-1109-3320')),
   ok(missed.length === 0, `every page is cleaned, not just the shown ones${missed.length ? ' — missed ' + missed.join(', ') : ''}`);
 }
 
+// Asked to flatten pages with no way to render them, the cleaner used to return
+// a file it had not cleaned, to a caller with no way to tell.
+{
+  let refused = false;
+  try {
+    await cleanPdf(original, { flattenPages: [1] });
+  } catch {
+    refused = true;
+  }
+  ok(refused, 'flattening without a rasterizer is refused rather than skipped');
+}
+
+// Scripts attached to an annotation are still scripts. The annotation stays;
+// only the code on it goes, and an ordinary link keeps working.
+{
+  const { PDFDocument, StandardFonts, PDFName, PDFString } = await import('pdf-lib');
+  const d = await PDFDocument.create();
+  const font = await d.embedFont(StandardFonts.Helvetica);
+  const ctx = d.context;
+  const page = d.addPage([612, 792]);
+  page.drawText('a scripted link and a plain one', { x: 60, y: 700, size: 12, font });
+  const scripted = ctx.obj({
+    Type: 'Annot', Subtype: 'Link', Rect: ctx.obj([60, 690, 300, 715]),
+    A: ctx.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('app.launchURL("https://ANNOTJSSECRET.example/")') }),
+  });
+  const plain = ctx.obj({
+    Type: 'Annot', Subtype: 'Link', Rect: ctx.obj([60, 650, 300, 675]),
+    A: ctx.obj({ S: PDFName.of('URI'), URI: PDFString.of('https://ORDINARYLINK.example/') }),
+  });
+  const widget = ctx.obj({
+    Type: 'Annot', Subtype: 'Widget', FT: PDFName.of('Btn'), T: PDFString.of('b1'),
+    Rect: ctx.obj([320, 690, 420, 715]),
+    AA: ctx.obj({ U: ctx.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('app.alert("WIDGETJSSECRET")') }) }),
+  });
+  page.node.set(PDFName.of('Annots'), ctx.obj([ctx.register(scripted), ctx.register(plain), ctx.register(widget)]));
+
+  const { bytes: out } = await cleanPdf(new Uint8Array(await d.save()), { scripts: true, annotations: false });
+  ok(!(await stillRecoverable(out, 'ANNOTJSSECRET')), 'a script on a link annotation is removed');
+  ok(!(await stillRecoverable(out, 'WIDGETJSSECRET')), 'a script on a form widget is removed');
+  ok(await stillRecoverable(out, 'ORDINARYLINK'), 'an ordinary link is left alone');
+}
+
 console.log(fail ? `\n${fail} FAILING` : '\nall green');
 process.exit(fail ? 1 : 0);
