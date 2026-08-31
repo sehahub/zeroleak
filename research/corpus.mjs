@@ -19,6 +19,7 @@ import { analyzePdf } from '../src/lib/analyze.ts';
 const DIR = 'research/corpus';
 const MANIFEST = 'research/manifest.json';
 const RESULTS = 'research/results.json';
+const SUMMARY = 'research/summary.json';
 
 const UA = 'ZeroLeakResearch/0.1 (PDF hygiene study; https://zeroleak.sehahub.info)';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -141,6 +142,38 @@ async function scanAll() {
 
   await writeFile(RESULTS, JSON.stringify(out, null, 1));
   console.log(`scanned ${out.length} documents -> ${RESULTS}`);
+  await summarise();
+}
+
+const GROUPS = [['redacted', (r) => r.redacted], ['ordinary', (r) => !r.redacted], ['all', () => true]];
+
+/** Writes the aggregate the site is built from. Per-document rows stay on this
+ *  machine: the fetcher is in this repository, so anyone could rebuild the
+ *  corpus and match a document id back to the file it came from. Publishing
+ *  those rows would name the documents this study promises not to name. */
+async function summarise() {
+  const raw = JSON.parse(await readFile(RESULTS, 'utf8'));
+  const rows = raw.filter((r) => !r.error && r.pages);
+  const ids = new Set();
+  for (const r of rows) for (const k of Object.keys(r.findings ?? {})) ids.add(k);
+
+  const groups = {};
+  for (const [name, filter] of GROUPS) {
+    const set = rows.filter(filter);
+    const sorted = set.map((r) => r.pages).sort((a, b) => a - b);
+    const findings = {};
+    for (const id of ids) findings[id] = set.filter((r) => r.findings?.[id]).length;
+    groups[name] = {
+      documents: set.length,
+      pages: set.reduce((a, r) => a + r.pages, 0),
+      medianPages: sorted[Math.floor(sorted.length / 2)] ?? 0,
+      findings,
+    };
+  }
+
+  const summary = { generated: new Date().toISOString().slice(0, 10), failedToParse: raw.length - rows.length, groups };
+  await writeFile(SUMMARY, JSON.stringify(summary, null, 1));
+  console.log(`wrote ${SUMMARY}: ${groups.all.documents} documents, ${groups.all.pages} pages`);
 }
 
 function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) + '%' : '—'; }
@@ -177,4 +210,5 @@ async function report() {
 const cmd = process.argv[2] ?? 'report';
 if (cmd === 'fetch') await fetchAll();
 else if (cmd === 'scan') await scanAll();
+else if (cmd === 'summarise') await summarise();
 else await report();

@@ -1,25 +1,26 @@
 ---
 import Guide from '../../layouts/Guide.astro';
-import results from '../../../research/results.json';
+import summary from '../../../research/summary.json';
 
-// Aggregated at build time from the scan output, so the prose cannot drift
-// away from the data. Only aggregates reach the page — never a per-document
-// row, which would let a reader work out which file a finding belongs to.
-type Row = {
-  redacted: boolean;
-  pages?: number;
-  error?: string;
-  findings?: Record<string, number>;
+// Built from the aggregate, never from per-document rows. The fetcher lives in
+// this repository, so a published document id could be matched back to the file
+// it came from — which would name the documents this study promises not to name.
+type Group = {
+  documents: number;
+  pages: number;
+  medianPages: number;
+  findings: Record<string, number>;
 };
 
-const rows = (results as Row[]).filter((r) => !r.error && r.pages);
-const redacted = rows.filter((r) => r.redacted);
-const ordinary = rows.filter((r) => !r.redacted);
-const pages = rows.reduce((a, r) => a + (r.pages ?? 0), 0);
+const groups = summary.groups as Record<string, Group>;
+const all = groups.all;
+const redacted = groups.redacted;
+const ordinary = groups.ordinary;
+const pages = all.pages;
 
-const share = (set: Row[], id: string) => {
-  const n = set.filter((r) => r.findings?.[id]).length;
-  return { n, pct: set.length ? Math.round((n / set.length) * 1000) / 10 : 0 };
+const share = (g: Group, id: string) => {
+  const n = g.findings[id] ?? 0;
+  return { n, pct: g.documents ? Math.round((n / g.documents) * 1000) / 10 : 0 };
 };
 const fmt = (s: { n: number; pct: number }) => (s.n === 0 ? 'none' : `${s.pct}%`);
 
@@ -34,12 +35,12 @@ const CHECKS = [
   ['hidden-text', 'Text under an opaque shape', 'The failure everyone worries about. The single flag in this sample was cover-page template text, not a withheld passage.'],
 ] as const;
 
-const rev = share(rows, 'prior-revisions');
-const meta = share(rows, 'metadata-identity');
-const xmpAll = share(rows, 'xmp');
+const rev = share(all, 'prior-revisions');
+const meta = share(all, 'metadata-identity');
+const xmpAll = share(all, 'xmp');
 const revRed = share(redacted, 'prior-revisions');
 const revOrd = share(ordinary, 'prior-revisions');
-const hiddenAll = share(rows, 'hidden-text');
+const hiddenAll = share(all, 'hidden-text');
 
 const toc = [
   { id: 'finding', label: 'What we found' },
@@ -57,12 +58,12 @@ const related = [
 ---
 
 <Guide
-  title={`What ${rows.length} published government documents are still carrying`}
-  metaTitle={`We scanned ${rows.length} UK government PDFs — the redactions held, the filing did not`}
-  description={`A structural scan of ${rows.length} PDFs published by UK government bodies, covering ${pages.toLocaleString()} pages. Not one failed redaction. But ${rev.pct}% still contain an earlier version of themselves, and ${meta.pct}% name a person or a topic in their metadata.`}
+  title={`What ${all.documents} published government documents are still carrying`}
+  metaTitle={`We scanned ${all.documents} UK government PDFs — the redactions held, the filing did not`}
+  description={`A structural scan of ${all.documents} PDFs published by UK government bodies, covering ${pages.toLocaleString()} pages. Not one failed redaction. But ${rev.pct}% still contain an earlier version of themselves, and ${meta.pct}% name a person or a topic in their metadata.`}
   path="/research/government-pdfs"
   kicker="Research"
-  standfirst={`Redaction failures get the headlines. So I scanned ${rows.length} documents published by UK government bodies to find some — and found none. What I found instead is quieter, far more common, and nobody is looking for it.`}
+  standfirst={`Redaction failures get the headlines. So I scanned ${all.documents} documents published by UK government bodies to find some — and found none. What I found instead is quieter, far more common, and nobody is looking for it.`}
   updated="2026-08-30"
   toc={toc}
   related={related}
@@ -73,7 +74,7 @@ const related = [
     It is a vivid failure, so it is the one people guard against. The guarding appears to work.
   </p>
   <p>
-    Across {rows.length} documents and {pages.toLocaleString()} pages, the scan flagged
+    Across {all.documents} documents and {pages.toLocaleString()} pages, the scan flagged
     {hiddenAll.n === 1 ? ' a single document ' : ` ${hiddenAll.n} documents `}
     with text under an opaque shape — and on inspection
     {hiddenAll.n === 1 ? ' that one turned out to be ' : ' those turned out to be '}
@@ -107,8 +108,8 @@ const related = [
       <thead>
         <tr>
           <th>The file still contains</th>
-          <th>Redacted before release<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{redacted.length} documents</span></th>
-          <th>Ordinary publications<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{ordinary.length} documents</span></th>
+          <th>Redacted before release<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{redacted.documents} documents</span></th>
+          <th>Ordinary publications<br /><span style="font-weight:400;text-transform:none;letter-spacing:0">{ordinary.documents} documents</span></th>
         </tr>
       </thead>
       <tbody>
@@ -149,7 +150,7 @@ const related = [
   <ul>
     <li><strong>Source.</strong> Documents published on gov.uk, retrieved through its public content API, taking the first PDF attachment of each publication.</li>
     <li><strong>Selection.</strong> Most recent first within five publication types: freedom-of-information releases and transparency data (the redacted group), and corporate reports, policy papers and research publications (the comparison group). No document was excluded on the basis of what the scan found in it.</li>
-    <li><strong>Sample.</strong> {rows.length} documents, {pages.toLocaleString()} pages, retrieved on 30 August 2026. Files above 25 MB were skipped, which biases the sample slightly against the largest publications.</li>
+    <li><strong>Sample.</strong> {all.documents} documents, {pages.toLocaleString()} pages, retrieved on 30 August 2026. Files above 25 MB were skipped, which biases the sample slightly against the largest publications.</li>
     <li><strong>Analysis.</strong> The same scanner that runs on the <a href="/">front page</a>, at a limit of thirty pages per document. It reads the file's structure: the drawing instructions, the object graph, and the bytes around them.</li>
     <li><strong>Verification.</strong> Every category the scanner reports was checked by hand against real documents before these numbers were taken. Three findings turned out to be artefacts of the tool rather than the documents — a false alarm on a hairline rule drawn as a clipped rectangle, another on annotation placement, and a third on the searchable text layer of scans — and each was fixed before the run that produced this page.</li>
   </ul>

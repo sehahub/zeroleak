@@ -1,0 +1,57 @@
+{
+ "generated": "2026-08-31",
+ "failedToParse": 0,
+ "groups": {
+  "redacted": {
+   "documents": 130,
+   "pages": 1992,
+   "medianPages": 4,
+   "findings": {
+    "metadata-identity": 104,
+    "xmp": 111,
+    "metadata-software": 118,
+    "prior-revisions": 32,
+    "external-links": 74,
+    "off-page-text": 3,
+    "attachments": 2,
+    "annotations": 1,
+    "ocr-layer": 2,
+    "hidden-text": 0
+   }
+  },
+  "ordinary": {
+   "documents": 80,
+   "pages": 3981,
+   "medianPages": 25,
+   "findings": {
+    "metadata-identity": 69,
+    "xmp": 76,
+    "metadata-software": 79,
+    "prior-revisions": 41,
+    "external-links": 57,
+    "off-page-text": 3,
+    "attachments": 3,
+    "annotations": 0,
+    "ocr-layer": 1,
+    "hidden-text": 1
+   }
+  },
+  "all": {
+   "documents": 210,
+   "pages": 5973,
+   "medianPages": 5,
+   "findings": {
+    "metadata-identity": 173,
+    "xmp": 187,
+    "metadata-software": 197,
+    "prior-revisions": 73,
+    "external-links": 131,
+    "off-page-text": 6,
+    "attachments": 5,
+    "annotations": 1,
+    "ocr-layer": 3,
+    "hidden-text": 1
+   }
+  }
+ }
+}
