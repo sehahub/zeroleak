@@ -138,8 +138,9 @@ export function renderCleaner(
     try {
       const { cleanPdf } = await import('../lib/clean.ts');
       const chosen: CleanOptions = {};
+      const skipped: string[] = [];
       for (const o of applicable) {
-        if (!boxes.get(o.key)?.checked) continue;
+        if (!boxes.get(o.key)?.checked) { skipped.push(o.label.toLowerCase()); continue; }
         if (o.key === 'flattenPages') {
           chosen.flattenPages = pages;
           chosen.rasterize = makeRasterizer(pdfjs, bytes);
@@ -160,6 +161,13 @@ export function renderCleaner(
       const ul = el('ul');
       for (const a of done) ul.append(el('li', undefined, a));
       box.append(ul);
+
+      // Listing only what was done lets an unticked box read as a job finished.
+      if (skipped.length) {
+        box.append(el('p', 'left-behind',
+          `Left in the file at your request: ${skipped.join('; ')}. `
+          + 'Scanning the cleaned copy will still report it.'));
+      }
 
       const verifyRow = el('div', 'cleaner-actions');
       const verify = el('button', 'btn btn-quiet', 'Scan the cleaned file');

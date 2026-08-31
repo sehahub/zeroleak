@@ -86,7 +86,7 @@ document id could be matched back to the file it came from.
 npm install
 npm run dev        # local dev server
 npm run build      # static build into dist/
-npm test           # 79 assertions across five suites
+npm test           # 103 assertions across six suites
 npm run typecheck
 npm run fixtures   # regenerate the test PDFs
 ```

@@ -116,6 +116,7 @@ async function fetchAll() {
 }
 
 async function scanAll() {
+  if (!existsSync(MANIFEST)) { console.log(`no corpus yet — run "fetch" first (${MANIFEST} is missing)`); return; }
   const manifest = JSON.parse(await readFile(MANIFEST, 'utf8'));
   const out = [];
   let done = 0;
@@ -152,6 +153,7 @@ const GROUPS = [['redacted', (r) => r.redacted], ['ordinary', (r) => !r.redacted
  *  corpus and match a document id back to the file it came from. Publishing
  *  those rows would name the documents this study promises not to name. */
 async function summarise() {
+  if (!existsSync(RESULTS)) { console.log(`nothing to summarise: ${RESULTS} does not exist`); return; }
   const raw = JSON.parse(await readFile(RESULTS, 'utf8'));
   const rows = raw.filter((r) => !r.error && r.pages);
   const ids = new Set();
@@ -179,6 +181,17 @@ async function summarise() {
 function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) + '%' : '—'; }
 
 async function report() {
+  if (!existsSync(RESULTS)) {
+    console.log(`No scan results here yet. ${RESULTS} is deliberately not committed:`);
+    console.log('the per-document rows could be matched back to the files they came from,');
+    console.log('and the study promises not to name them. Build your own sample first:
+');
+    console.log('  node --experimental-strip-types research/corpus.mjs fetch');
+    console.log('  node --experimental-strip-types research/corpus.mjs scan
+');
+    console.log(`The published aggregate is in ${SUMMARY}.`);
+    return;
+  }
   const rows = JSON.parse(await readFile(RESULTS, 'utf8')).filter((r) => !r.error && r.pages);
   const groups = [
     ['redacted before release (FOI and transparency)', rows.filter((r) => r.redacted)],

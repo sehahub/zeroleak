@@ -211,6 +211,22 @@ if (file) {
     'no secret survives in the browser-cleaned bytes');
 }
 
+// Unticking the destructive option must not produce a report that reads as done.
+{
+  const p6 = await browser.newPage();
+  p6.on('pageerror', (e) => errors.push('partial: ' + String(e)));
+  await p6.goto(base, { waitUntil: 'networkidle0' });
+  await (await p6.$('#file')).uploadFile(resolve('test/fixtures/leaky.pdf'));
+  await p6.waitForSelector('.cleaner', { timeout: 45000 });
+  await p6.$eval('.opt.destructive input', (n) => n.click());
+  await p6.$$eval('.cleaner button', (bs) => bs.find((b) => /Clean and download/.test(b.textContent)).click());
+  await p6.waitForSelector('.done', { timeout: 90000 });
+  const left = await p6.$eval('.done .left-behind', (n) => n.textContent).catch(() => '');
+  ok(/Left in the file at your request/.test(left) && /not on the page/.test(left),
+    `an unticked option is named in the result ("${left.slice(0, 80)}")`);
+  await p6.close();
+}
+
 await p2.$$eval('.done button', (bs) => bs.find((b) => /Scan the cleaned file/.test(b.textContent)).click());
 await p2.waitForSelector('.verdict.is-clean', { timeout: 60000 });
 const verdictText = await p2.$eval('.verdict-body h2', (n) => n.textContent);
