@@ -71,8 +71,17 @@ async function fetchAll() {
   }
 }
 
-async function scanAll() {
-  const files = (await readdir(DIR)).filter((f) => f.endsWith('.pdf')).sort();
+const EXPECTED = 'test/corpus-expected.json';
+
+async function scanAll({ bless = false } = {}) {
+  const files = (await readdir(DIR).catch(() => []))
+    .filter((f) => f.endsWith('.pdf') && !f.startsWith('redacted-')).sort();
+  if (!files.length) {
+    console.log(`no corpus here — run "fetch" first (${DIR} is empty)`);
+    return;
+  }
+  const expected = existsSync(EXPECTED) ? JSON.parse(await readFile(EXPECTED, 'utf8')) : {};
+  const observed = {};
   const rows = [];
   const flags = [];
 
@@ -82,7 +91,8 @@ async function scanAll() {
     const size = (await stat(path)).size;
     try {
       const r = await analyzePdf(bytes, pdfjs, { fileName: f, pageLimit: 40 });
-      const ids = r.findings.map((x) => x.id);
+      const ids = r.findings.map((x) => x.id).sort();
+      observed[f] = ids;
       rows.push({ f, pages: r.pages, mb: (size / 1048576).toFixed(1), ms: r.ms, ids });
 
       // Any claim of hidden text in a published document is either a real
@@ -94,6 +104,7 @@ async function scanAll() {
         }
       }
     } catch (e) {
+      observed[f] = ['ERROR: ' + e.message];
       rows.push({ f, pages: 0, mb: (size / 1048576).toFixed(1), ms: 0, ids: ['ERROR: ' + e.message] });
     }
   }
@@ -112,6 +123,40 @@ async function scanAll() {
 
   const errors = rows.filter((r) => r.ids.some((i) => i.startsWith('ERROR')));
   console.log(`\n${rows.length} files, ${errors.length} failed to parse`);
+
+  if (bless) {
+    await writeFile(EXPECTED, JSON.stringify(observed, null, 1) + '\n');
+    console.log(`recorded ${Object.keys(observed).length} documents in ${EXPECTED}`);
+    return;
+  }
+
+  // Reading the output by eye is not a check. Comparing it against what was
+  // recorded is: a regression that starts flagging a published document fails
+  // here rather than waiting to be noticed.
+  console.log('\n=== against the recorded expectations ===');
+  let drift = 0;
+  for (const [name, ids] of Object.entries(observed)) {
+    const want = expected[name];
+    if (!want) { console.log(`  NEW      ${name} -> ${ids.join(' ') || '(clean)'}`); drift++; continue; }
+    if (want.join(' ') !== ids.join(' ')) {
+      console.log(`  CHANGED  ${name}`);
+      console.log(`     was: ${want.join(' ') || '(clean)'}`);
+      console.log(`     now: ${ids.join(' ') || '(clean)'}`);
+      drift++;
+    }
+  }
+  for (const m of Object.keys(expected).filter((k) => !(k in observed))) {
+    console.log(`  MISSING  ${m} (not fetched; skipped)`);
+  }
+
+  if (!drift) {
+    console.log(`  ${Object.keys(observed).length} documents match what was recorded.`);
+    return;
+  }
+  console.log(`\n${drift} document(s) differ from what was recorded.`);
+  console.log('If the new behaviour is correct, record it deliberately:');
+  console.log('  node --experimental-strip-types test/corpus.mjs bless');
+  process.exitCode = 1;
 }
 
 /** Takes a real Korean document, paints a black box over a line of its text the
@@ -157,4 +202,5 @@ async function cjkRedaction() {
 const cmd = process.argv[2] ?? 'scan';
 if (cmd === 'fetch') await fetchAll();
 else if (cmd === 'cjk') await cjkRedaction();
+else if (cmd === 'bless') await scanAll({ bless: true });
 else await scanAll();

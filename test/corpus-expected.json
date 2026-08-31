@@ -1,0 +1,84 @@
+{
+ "arxiv-attention.pdf": [
+  "external-links",
+  "metadata-software"
+ ],
+ "arxiv-bert.pdf": [
+  "external-links",
+  "metadata-software"
+ ],
+ "arxiv-resnet.pdf": [
+  "external-links",
+  "metadata-software"
+ ],
+ "gpo-constitution.pdf": [
+  "metadata-software",
+  "xmp"
+ ],
+ "irs-chinese.pdf": [
+  "external-links",
+  "metadata-identity",
+  "metadata-software",
+  "xmp"
+ ],
+ "irs-form1040.pdf": [
+  "form-values",
+  "javascript",
+  "metadata-identity",
+  "metadata-software",
+  "prior-revisions",
+  "xmp"
+ ],
+ "irs-korean.pdf": [
+  "external-links",
+  "metadata-identity",
+  "metadata-software",
+  "prior-revisions",
+  "xmp"
+ ],
+ "irs-pub17.pdf": [
+  "attachments",
+  "external-links",
+  "metadata-identity",
+  "metadata-software",
+  "off-page-text",
+  "xmp"
+ ],
+ "irs-spanish.pdf": [
+  "attachments",
+  "external-links",
+  "metadata-identity",
+  "metadata-software",
+  "off-page-text",
+  "xmp"
+ ],
+ "nist-csf.pdf": [
+  "external-links",
+  "metadata-identity",
+  "metadata-software",
+  "xmp"
+ ],
+ "rfc9110.pdf": [
+  "attachments",
+  "external-links",
+  "metadata-identity",
+  "metadata-software",
+  "xmp"
+ ],
+ "sec-filing.pdf": [
+  "metadata-identity",
+  "metadata-software",
+  "prior-revisions",
+  "xmp"
+ ],
+ "un-sdg.pdf": [
+  "metadata-software",
+  "xmp"
+ ],
+ "uscourts-form.pdf": [
+  "form-values",
+  "metadata-identity",
+  "metadata-software",
+  "xmp"
+ ]
+}

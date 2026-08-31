@@ -91,7 +91,7 @@ ok(/Jane Doe/.test(text), 'browser report surfaces the author metadata');
 ok(/severance_master\.csv/.test(text), 'browser report lists the embedded file');
 const headline = await page.$eval('.verdict-body h2', (n) => n.textContent);
 ok(headline.startsWith(verdict + ' '), `headline number matches the score (score ${verdict}, headline "${headline}")`);
-ok(errors.length === 0, `no console errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
+// Console errors are asserted at the end, once every scenario has run.
 
 // Nothing may be sent anywhere: assert no request left the origin.
 const offOrigin = [];
@@ -252,6 +252,9 @@ const verdictText = await p2.$eval('.verdict-body h2', (n) => n.textContent);
 ok(/No hidden content found/.test(verdictText), `re-scanning in the page confirms it is clean ("${verdictText}")`);
 
 await rm(DL, { recursive: true, force: true });
+
+ok(errors.length === 0,
+  `no page threw or logged an error, across every scenario${errors.length ? ': ' + errors.slice(0, 4).join(' | ') : ''}`);
 
 await browser.close();
 server.close();
