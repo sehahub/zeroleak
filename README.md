@@ -146,6 +146,12 @@ test/             fixtures, unit suites, and an end-to-end browser run
 research/         corpus tooling and the published aggregate
 ```
 
+## Licence
+
+MIT — see [LICENSE](LICENSE). The point of publishing this was that the claims
+could be checked rather than believed, and a repository nobody may legally run
+or fork does not allow that.
+
 ## Limits
 
 Structural analysis reads the file, not the picture. Text burned into a scanned
