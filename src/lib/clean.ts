@@ -76,9 +76,10 @@ export async function cleanPdf(bytes: Uint8Array, opts: CleanOptions): Promise<C
   const actions: string[] = [];
 
   if (opts.metadata) {
-    const info = doc.getInfoDict();
-    const keys = info.keys().map((k) => k.asString());
-    for (const k of keys) info.delete(PDFName.of(k.replace(/^\//, '')));
+    // Reached through the trailer rather than doc.getInfoDict(), which pdf-lib
+    // marks private: it works today and would go silently on a rename.
+    const info = ctx.lookupMaybe(ctx.trailerInfo.Info as PDFRef | undefined, PDFDict);
+    for (const key of info?.keys() ?? []) info?.delete(key);
     let hadXmp = deleteFrom(catalog, 'Metadata');
     if (ctx.trailerInfo.ID) { delete (ctx.trailerInfo as { ID?: unknown }).ID; }
 

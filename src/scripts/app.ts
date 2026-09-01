@@ -196,14 +196,14 @@ function renderReport(r: Report, root: HTMLElement, extras?: Extras) {
 
   if (extras && r.findings.length) {
     const panel = extras.cleaner(r, extras.bytes, extras.pdfjs, extras.pages,
-      (cleaned, name) => { void scanBytes(cleaned, name); });
+      (cleaned, name) => { void scanBytes(cleaned, name, { counted: false }); });
     if (panel) root.append(panel);
   }
 
   for (const f of r.findings) root.append(renderFinding(f));
 }
 
-async function scanBytes(bytes: Uint8Array, fileName: string) {
+async function scanBytes(bytes: Uint8Array, fileName: string, { counted = true } = {}) {
   const status = $('status');
   const statusText = $('status-text');
   const bar = $<HTMLElement>('bar');
@@ -231,13 +231,15 @@ async function scanBytes(bytes: Uint8Array, fileName: string) {
 
     bar.style.width = '100%';
     status.hidden = true;
-    count('scan');
+    // Re-scanning a cleaned file is a verification step, not another
+    // document. Counting it inflated the one number a decision rests on.
+    if (counted) count('scan');
     renderReport(r, report, {
       bytes, pdfjs, pages: pagesWithHiddenText(r), cleaner: renderCleaner,
     });
     report.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
-    count('scan-failed');
+    if (counted) count('scan-failed');
     status.hidden = false;
     $('dz').hidden = false;
     statusText.textContent =
@@ -324,7 +326,7 @@ function wireSignup() {
       });
       if (!res.ok) throw new Error(String(res.status));
       form.hidden = true;
-      note.textContent = 'Saved. You will hear from me once — when the cleaner ships.';
+      note.textContent = 'Saved. You will hear from me once — when the command-line version ships.';
     } catch {
       note.textContent = 'Could not save that just now. Please try again later.';
     }

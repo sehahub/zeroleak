@@ -64,8 +64,8 @@ const MUTATIONS = [
   {
     name: 'paint order is ignored, so anything near a shape counts as covered',
     file: 'src/lib/scan-page.ts',
-    find: 'const over = covers.filter((c) => c.order > r.order',
-    into: 'const over = covers.filter((c) => c.order >= 0',
+    find: '  const over = covers.filter((c) => c.order > run.order && unionCoverage(run.box, [c.box]) > 0.02);',
+    into: '  const over = covers.filter((c) => unionCoverage(run.box, [c.box]) > 0.02);',
   },
   {
     name: 'clipping is ignored when sizing a cover',

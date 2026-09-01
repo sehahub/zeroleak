@@ -13,7 +13,7 @@ the browser.
 
 Your document is never uploaded, because there is no server-side code to upload
 it to. The site is static files behind a Worker whose entire job is to serve
-them and increment three counters.
+them and increment three counters, plus the waiting-list form if you fill it in.
 
 Three ways to verify that without trusting anyone:
 
@@ -123,17 +123,6 @@ node --experimental-strip-types test/corpus.mjs cjk     # Korean and Chinese red
 
 The browser and accessibility suites need Chrome or Edge installed; they drive
 whichever they find. Both read dist/, so npm test builds before running them.
-
-```sh
-npm run mutation    # remove one guarantee at a time, require the suite to notice
-```
-
-Every serious bug in this project was found by assuming the checks were lying.
-An outside review gutted the cleaner to a no-op and watched eight assertions
-pass. `npm run mutation` automates that move: it deletes one behaviour at a
-time — the attachment removal, paint order, the form matrix, vertical metrics,
-the structure tree, and twenty-seven others — and fails if the suite still goes
-green. A behaviour that can be removed without a test failing is not tested.
 
 ```sh
 npm run mutation    # remove one guarantee at a time, require the suite to notice

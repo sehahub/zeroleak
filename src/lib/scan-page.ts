@@ -136,25 +136,11 @@ const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
  *  hidden text is a false alarm. */
 const hasSubstance = (t: string) => /[\p{L}\p{N}]/u.test(t);
 
-/** True when the same text is painted somewhere on this page where a reader can
- *  actually see it. Diagram labels and button captions are routinely drawn more
- *  than once, and a run whose words are legible elsewhere is hiding nothing.
- *
- *  Only filled shapes count against the other instance. Pictures sit on top of
- *  composition text all the time in figures — treating them as concealment made
- *  every label in a chart look redacted. */
-function drawnInTheOpen(run: TextRun, runs: TextRun[], covers: Cover[]): boolean {
-  const key = norm(run.text);
-  if (!key) return true;
-  const fills = covers.filter((c) => c.kind === 'fill');
-  for (const other of runs) {
-    if (other === run || other.invisible || norm(other.text) !== key) continue;
-    if (clippedAway(other)) continue;
-    const over = fills.filter((c) => c.order > other.order && unionCoverage(other.box, [c.box]) > 0.02);
-    if (!over.length) return true;
-    if (unionCoverage(other.box, over.map((c) => c.box)) < 0.85) return true;
-  }
-  return false;
+/** How much of a run is buried under shapes painted after it. */
+function buriedUnder(run: TextRun, covers: Cover[]): { fraction: number; first: Cover | undefined } {
+  const over = covers.filter((c) => c.order > run.order && unionCoverage(run.box, [c.box]) > 0.02);
+  if (!over.length) return { fraction: 0, first: undefined };
+  return { fraction: unionCoverage(run.box, over.map((c) => c.box)), first: over[0] };
 }
 
 /** Whether the clip in force reduced this run to nothing worth seeing. */
@@ -415,6 +401,42 @@ export function scanOperatorList(
   const ocr: string[] = [];
   const offPage: string[] = [];
 
+  // Whether a run is buried is asked once per run and then looked up. Asking it
+  // again for every duplicate made a page of repeated covered text quadratic:
+  // eight hundred runs took four seconds, and a few thousand would have locked
+  // the tab for minutes — which the page limit does nothing to prevent.
+  const fills = covers.filter((c) => c.kind === 'fill');
+  const buried = new Map<TextRun, ReturnType<typeof buriedUnder>>();
+  const buriedByFill = new Map<TextRun, boolean>();
+  for (const r of runs) {
+    buried.set(r, buriedUnder(r, covers));
+    buriedByFill.set(r, buriedUnder(r, fills).fraction >= 0.85);
+  }
+
+  // Grouped by text so the duplicate test is a lookup rather than a scan.
+  const sameWords = new Map<string, TextRun[]>();
+  for (const r of runs) {
+    const key = norm(r.text);
+    if (!key) continue;
+    const list = sameWords.get(key);
+    if (list) list.push(r); else sameWords.set(key, [r]);
+  }
+
+  /** True when these words are also painted somewhere a reader can see them.
+   *  Diagram labels and button captions are routinely drawn more than once.
+   *  Only filled shapes count against the other instance: pictures sit over
+   *  composition text constantly, and counting them made every chart label look
+   *  redacted. */
+  const drawnInTheOpen = (run: TextRun): boolean => {
+    const key = norm(run.text);
+    if (!key) return true;
+    for (const other of sameWords.get(key) ?? []) {
+      if (other === run || other.invisible || clippedAway(other)) continue;
+      if (!buriedByFill.get(other)) return true;
+    }
+    return false;
+  };
+
   for (const r of runs) {
     if (!hasSubstance(r.text)) continue;
 
@@ -423,7 +445,7 @@ export function scanOperatorList(
     // legible elsewhere — laying out a figure clips stray copies of a label all
     // the time, and none of that is concealment.
     if (clippedAway(r)) {
-      if (!drawnInTheOpen(r, runs, covers)) offPage.push(r.text);
+      if (!drawnInTheOpen(r)) offPage.push(r.text);
       continue;
     }
     if (r.invisible) {
@@ -436,14 +458,10 @@ export function scanOperatorList(
     }
     const outside = r.box.x1 < vx0 || r.box.x0 > vx1 || r.box.y1 < vy0 || r.box.y0 > vy1;
     if (outside) { offPage.push(r.text); continue; }
-    const over = covers.filter((c) => c.order > r.order && unionCoverage(r.box, [c.box]) > 0.02);
-    if (!over.length) continue;
-    if (unionCoverage(r.box, over.map((c) => c.box)) < 0.85) continue;
-    // Diagram labels and button captions are routinely drawn once behind a
-    // shape and again on top of it. A run whose exact text is also painted in
-    // the open on the same page is hiding nothing.
-    if (drawnInTheOpen(r, runs, covers)) continue;
-    covered.push({ text: r.text, color: over[0].color, box: r.box });
+    const under = buried.get(r);
+    if (!under || under.fraction < 0.85 || !under.first) continue;
+    if (drawnInTheOpen(r)) continue;
+    covered.push({ text: r.text, color: under.first.color, box: r.box });
   }
   // A page whose text is almost entirely invisible does not contain a hidden
   // paragraph — its text layer is a machine-generated overlay on artwork, which

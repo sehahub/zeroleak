@@ -67,6 +67,10 @@ const faqs = [
     a: 'Never. You get a new copy in your downloads folder, named with a -cleaned suffix. The file on your disk is not touched. After cleaning you can scan the result in the same page to confirm it came out empty.',
   },
   {
+    q: 'Does the cleaner remove anything the scanner did not report?',
+    a: 'Yes, and it is worth knowing which. A PDF keeps copies of its text in places the scanner does not inspect: the structure tree that screen readers use, whose ActualText can hold wording the page no longer shows; a second XMP packet attached to a page rather than the document; private application data, where an editor stores an editable original; and a cached thumbnail of the page as it looked earlier. The cleaner removes all of those and says so in the list of what it did. The scanner does not look at them, so a clean report is not a statement about them. Reading them would mean parsing the file a second way, which is work rather than an oversight — but until it is done, this is the honest position.',
+  },
+  {
     q: 'Does a clean report mean the document is safe to publish?',
     a: 'It means the structural leaks ZeroLeak knows how to detect are absent. It cannot judge whether the visible content itself should be public, and it does not read images — text burned into a scan is outside its reach. Treat it as one check in a review, not the whole review.',
   },
@@ -206,10 +210,16 @@ const faqSchema = {
     <div class="narrow prose">
       <h2>Why "no upload" is a fact here, not a promise</h2>
       <p>
-        Every other free PDF tool asks you to upload the document to a server you do not control. For
-        a marketing brochure that is fine. For a settlement agreement, a patient record, or a source
+        Most free PDF tools ask you to upload the document to a server you do not control. For a
+        marketing brochure that is fine. For a settlement agreement, a patient record, or a source
         document you have promised to protect, it is disqualifying — the upload is itself the
         disclosure you were trying to prevent.
+      </p>
+      <p>
+        A handful of other tools also run in the browser, and I would rather say so than imply
+        otherwise. What is unusual here is not the absence of an upload but that you are not asked
+        to take it on trust: the policy below is enforced by your browser, the test suite asserts
+        what leaves the page, and the source is public so you can check both.
       </p>
       <p>
         ZeroLeak has no backend. The parser and the cleaner are compiled into the page and run in
@@ -229,16 +239,18 @@ const faqSchema = {
         rather than trusting the page. You can read the policy for yourself in the response headers.
       </p>
       <p>
-        Here is everything this site records, in full. Three tallies go up: <em>a page was
-        viewed</em> (with the day and the site you came from), <em>a scan finished</em>, and <em>a
-        file was cleaned</em>. No cookie, no IP address, no visitor identifier, no third-party
-        analytics.
+        Here is everything this site records. Three tallies go up: <em>a page was viewed</em> (with
+        the day and the site you came from), <em>a scan finished</em>, and <em>a file was
+        cleaned</em>. No cookie, no IP address, no visitor identifier, no third-party analytics.
+        And if you fill in the form further down, the address and the note you type are stored —
+        that one is you handing them over on purpose, but it is a fourth thing kept on a server and
+        it belongs in this list.
       </p>
       <p>
         Nothing about your document is in that list, and it cannot be: the scan happens in your
         browser, and the request that increments the counter carries one word — <code>scan</code> —
         and no other field. Not the file, not its name, not its size, not its page count, not what
-        was found in it. The server is checked against a fixed list of three names and rejects
+        was found in it. The server checks that word against a fixed list of three and rejects
         anything else, so there is nowhere for a document detail to go even by accident.
       </p>
       <p>
@@ -270,7 +282,7 @@ const faqSchema = {
           <input type="email" name="email" placeholder="you@firm.com" required aria-label="Email address" />
           <button class="btn" type="submit">Keep me posted</button>
         </form>
-        <p class="note" id="signup-note">One email, when it ships. No newsletter, no sharing.</p>
+        <p class="note" id="signup-note">One email, when the command-line version ships. No newsletter, no sharing.</p>
       </div>
     </div>
   </section>
